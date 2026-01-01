@@ -19,7 +19,8 @@ func main() {
 	defer dbConn.Close()
 
 	queries := db.New(dbConn)
-	service := app.NewService(queries)
+	service := app.NewService(queries, dbConn)
+	service.SkipCooldown = true // Allow creating multiple puzzles in one go
 	ctx := context.Background()
 
 	users := []struct {
@@ -53,6 +54,27 @@ func main() {
 	_ = service.FollowUser(ctx, createdUsers["bob"], createdUsers["charlie"])
 	fmt.Println("Alice follows Bob.")
 	fmt.Println("Bob follows Charlie.")
+
+	// Create some puzzles
+	fmt.Println("\nSeeding puzzles...")
+	puzzles := []struct {
+		owner string
+		name  string
+		w, h  int64
+	}{
+		{"alice", "Alice's Daily", 15, 15},
+		{"alice", "Mini 5x5", 5, 5},
+		{"bob", "Bob's Challenge", 21, 21},
+	}
+
+	for _, p := range puzzles {
+		created, err := service.CreatePuzzle(ctx, p.name, createdUsers[p.owner], p.w, p.h)
+		if err != nil {
+			fmt.Printf("Error creating puzzle %s: %v\n", p.name, err)
+			continue
+		}
+		fmt.Printf("Created puzzle: %s (ID: %s) for %s\n", created.Name, created.ID, p.owner)
+	}
 
 	fmt.Println("\nSeeding complete!")
 	fmt.Println("Use these links to check profiles once the server is running:")

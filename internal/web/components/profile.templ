@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-templ Profile(targetUser *db.User, isFollowing bool, followers []db.User, following []db.User, limit, offset int64) {
+templ Profile(targetUser *db.User, isFollowing bool, followers []db.User, following []db.User, limit, offset int64, puzzles []db.Puzzle) {
 	<div id="profile-page" class="container stack">
 		<section class="card text-center stack">
 			<header>
@@ -23,6 +23,24 @@ templ Profile(targetUser *db.User, isFollowing bool, followers []db.User, follow
 				}
 			</div>
 		</section>
+
+		<section class="stack">
+			<h2>Puzzles by { targetUser.Username }</h2>
+			if len(puzzles) == 0 {
+				<p class="text-center">No puzzles created yet.</p>
+			} else {
+				<div class="grid-2">
+					for _, p := range puzzles {
+						<div class="card">
+							<h3>{ p.Name }</h3>
+							<p>{ fmt.Sprintf("%dx%d", p.Width, p.Height) }</p>
+							<a href={ templ.SafeURL(fmt.Sprintf("/puzzles/%s", p.ID)) } class="btn-link">Open Grid</a>
+						</div>
+					}
+				</div>
+			}
+		</section>
+
 		<div class="grid-2">
 			<section class="card stack">
 				<h3>Following ({ fmt.Sprint(len(following)) })</h3>

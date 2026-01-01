@@ -53,8 +53,9 @@ func (s *Server) renderProfile(w http.ResponseWriter, r *http.Request, targetID 
 	followers, _ := s.Service.GetFollowers(r.Context(), targetID, limit, offset)
 	following, _ := s.Service.GetFollowing(r.Context(), targetID, limit, offset)
 	isFollowing, _ := s.Service.IsFollowing(r.Context(), currentUserID, targetID)
+	puzzles, _ := s.Service.GetPuzzlesByOwner(r.Context(), targetID, 10, 0)
 
-	component := components.Profile(targetUser, isFollowing, followers, following, limit, offset)
+	component := components.Profile(targetUser, isFollowing, followers, following, limit, offset, puzzles)
 
 	if isFragment {
 		w.WriteHeader(http.StatusOK)

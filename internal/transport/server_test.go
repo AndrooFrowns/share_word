@@ -23,7 +23,7 @@ func setupTestServer(t *testing.T) (*Server, *sql.DB) {
 	}
 
 	queries := db.New(dbConn)
-	service := app.NewService(queries)
+	service := app.NewService(queries, dbConn)
 	server := NewServer(service, dbConn)
 	return server, dbConn
 }
@@ -72,8 +72,8 @@ func TestLoginFlow(t *testing.T) {
 	if wHome.Code != http.StatusOK {
 		t.Errorf("expected status 200 for home page, got %d", wHome.Code)
 	}
-	if !strings.Contains(wHome.Body.String(), "Welcome, test_user") {
-		t.Errorf("home page did not contain welcome message. Got: %s", wHome.Body.String())
+	if !strings.Contains(wHome.Body.String(), "Create a New Puzzle") {
+		t.Errorf("dashboard did not contain creation header. Got: %s", wHome.Body.String())
 	}
 }
 
@@ -104,8 +104,8 @@ func TestSignupFlow(t *testing.T) {
 	wHome := httptest.NewRecorder()
 	server.Router.ServeHTTP(wHome, reqHome)
 
-	if !strings.Contains(wHome.Body.String(), "Welcome, new_user") {
-		t.Error("failed to log in automatically after signup")
+	if !strings.Contains(wHome.Body.String(), "Create a New Puzzle") {
+		t.Error("failed to render dashboard automatically after signup")
 	}
 }
 

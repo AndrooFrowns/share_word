@@ -19,5 +19,8 @@ func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	components.Layout(components.Home(user), user).Render(r.Context(), w)
+	myPuzzles, _ := s.Service.GetPuzzlesByOwner(r.Context(), user.ID, 10, 0)
+	followingPuzzles, _ := s.Service.GetPuzzlesFromFollowing(r.Context(), user.ID, 10, 0)
+
+	components.Layout(components.Dashboard(user, myPuzzles, followingPuzzles), user).Render(r.Context(), w)
 }

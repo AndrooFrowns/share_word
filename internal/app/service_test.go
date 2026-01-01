@@ -20,7 +20,7 @@ func TestRegisterUser(t *testing.T) {
 	queries, conn := setupTestDB(t)
 	defer conn.Close()
 
-	svc := NewService(queries)
+	svc := NewService(queries, conn)
 	ctx := context.Background()
 
 	user, err := svc.RegisterUser(ctx, "bob", "secret-pass-abcd")
@@ -40,7 +40,7 @@ func TestRegisterUser(t *testing.T) {
 func TestRegisterUser_Validation(t *testing.T) {
 	queries, conn := setupTestDB(t)
 	defer conn.Close()
-	svc := NewService(queries)
+	svc := NewService(queries, conn)
 	ctx := context.Background()
 
 	tests := []struct {
@@ -77,7 +77,7 @@ func TestRegisterUser_Validation(t *testing.T) {
 func TestAuthenticateUser(t *testing.T) {
 	queries, conn := setupTestDB(t)
 	defer conn.Close()
-	svc := NewService(queries)
+	svc := NewService(queries, conn)
 	ctx := context.Background()
 
 	// 1. Setup: Register a user first

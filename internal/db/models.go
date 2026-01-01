@@ -8,10 +8,35 @@ import (
 	"time"
 )
 
+type Cell struct {
+	PuzzleID string
+	X        int64
+	Y        int64
+	Char     string
+	IsBlock  bool
+	IsPencil bool
+}
+
+type Clue struct {
+	PuzzleID  string
+	Number    int64
+	Direction string
+	Text      string
+}
+
 type Follow struct {
 	FollowerID string
 	FollowedID string
 	CreatedAt  time.Time
+}
+
+type Puzzle struct {
+	ID        string
+	OwnerID   string
+	Name      string
+	Width     int64
+	Height    int64
+	CreatedAt time.Time
 }
 
 type Session struct {
