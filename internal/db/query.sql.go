@@ -10,6 +10,40 @@ import (
 	"time"
 )
 
+const createPuzzle = `-- name: CreatePuzzle :one
+INSERT INTO puzzles (id, owner_id, name, width, height)
+VALUES (?, ?, ?, ?, ?)
+RETURNING id, owner_id, name, width, height, created_at
+`
+
+type CreatePuzzleParams struct {
+	ID      string
+	OwnerID string
+	Name    string
+	Width   int64
+	Height  int64
+}
+
+func (q *Queries) CreatePuzzle(ctx context.Context, arg CreatePuzzleParams) (Puzzle, error) {
+	row := q.db.QueryRowContext(ctx, createPuzzle,
+		arg.ID,
+		arg.OwnerID,
+		arg.Name,
+		arg.Width,
+		arg.Height,
+	)
+	var i Puzzle
+	err := row.Scan(
+		&i.ID,
+		&i.OwnerID,
+		&i.Name,
+		&i.Width,
+		&i.Height,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (id, username, password_hash, created_at)
 VALUES (?, ?, ?, ?)
@@ -53,6 +87,40 @@ type FollowUserParams struct {
 func (q *Queries) FollowUser(ctx context.Context, arg FollowUserParams) error {
 	_, err := q.db.ExecContext(ctx, followUser, arg.FollowerID, arg.FollowedID)
 	return err
+}
+
+const getCells = `-- name: GetCells :many
+SELECT puzzle_id, x, y, char, is_block, is_pencil FROM cells WHERE puzzle_id = ? ORDER BY y, x
+`
+
+func (q *Queries) GetCells(ctx context.Context, puzzleID string) ([]Cell, error) {
+	rows, err := q.db.QueryContext(ctx, getCells, puzzleID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Cell
+	for rows.Next() {
+		var i Cell
+		if err := rows.Scan(
+			&i.PuzzleID,
+			&i.X,
+			&i.Y,
+			&i.Char,
+			&i.IsBlock,
+			&i.IsPencil,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getFollowers = `-- name: GetFollowers :many
@@ -139,6 +207,128 @@ func (q *Queries) GetFollowing(ctx context.Context, arg GetFollowingParams) ([]U
 	return items, nil
 }
 
+const getLastPuzzleByOwner = `-- name: GetLastPuzzleByOwner :one
+SELECT id, owner_id, name, width, height, created_at FROM puzzles
+WHERE owner_id = ?
+ORDER BY created_at DESC
+LIMIT 1
+`
+
+func (q *Queries) GetLastPuzzleByOwner(ctx context.Context, ownerID string) (Puzzle, error) {
+	row := q.db.QueryRowContext(ctx, getLastPuzzleByOwner, ownerID)
+	var i Puzzle
+	err := row.Scan(
+		&i.ID,
+		&i.OwnerID,
+		&i.Name,
+		&i.Width,
+		&i.Height,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getPuzzle = `-- name: GetPuzzle :one
+SELECT id, owner_id, name, width, height, created_at FROM puzzles WHERE id = ? LIMIT 1
+`
+
+func (q *Queries) GetPuzzle(ctx context.Context, id string) (Puzzle, error) {
+	row := q.db.QueryRowContext(ctx, getPuzzle, id)
+	var i Puzzle
+	err := row.Scan(
+		&i.ID,
+		&i.OwnerID,
+		&i.Name,
+		&i.Width,
+		&i.Height,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getPuzzlesByOwner = `-- name: GetPuzzlesByOwner :many
+SELECT id, owner_id, name, width, height, created_at FROM puzzles WHERE owner_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?
+`
+
+type GetPuzzlesByOwnerParams struct {
+	OwnerID string
+	Limit   int64
+	Offset  int64
+}
+
+func (q *Queries) GetPuzzlesByOwner(ctx context.Context, arg GetPuzzlesByOwnerParams) ([]Puzzle, error) {
+	rows, err := q.db.QueryContext(ctx, getPuzzlesByOwner, arg.OwnerID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Puzzle
+	for rows.Next() {
+		var i Puzzle
+		if err := rows.Scan(
+			&i.ID,
+			&i.OwnerID,
+			&i.Name,
+			&i.Width,
+			&i.Height,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getPuzzlesFromFollowing = `-- name: GetPuzzlesFromFollowing :many
+SELECT p.id, p.owner_id, p.name, p.width, p.height, p.created_at FROM puzzles p
+JOIN follows f ON f.followed_id = p.owner_id
+WHERE f.follower_id = ?
+ORDER BY p.created_at DESC LIMIT ? OFFSET ?
+`
+
+type GetPuzzlesFromFollowingParams struct {
+	FollowerID string
+	Limit      int64
+	Offset     int64
+}
+
+func (q *Queries) GetPuzzlesFromFollowing(ctx context.Context, arg GetPuzzlesFromFollowingParams) ([]Puzzle, error) {
+	rows, err := q.db.QueryContext(ctx, getPuzzlesFromFollowing, arg.FollowerID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Puzzle
+	for rows.Next() {
+		var i Puzzle
+		if err := rows.Scan(
+			&i.ID,
+			&i.OwnerID,
+			&i.Name,
+			&i.Width,
+			&i.Height,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUser = `-- name: GetUser :one
 SELECT id, username, password_hash, created_at FROM users WHERE id = ? LIMIT 1
 `
@@ -202,5 +392,35 @@ type UnfollowUserParams struct {
 
 func (q *Queries) UnfollowUser(ctx context.Context, arg UnfollowUserParams) error {
 	_, err := q.db.ExecContext(ctx, unfollowUser, arg.FollowerID, arg.FollowedID)
+	return err
+}
+
+const updateCell = `-- name: UpdateCell :exec
+INSERT INTO cells (puzzle_id, x, y, char, is_block, is_pencil)
+VALUES (?, ?, ?, ?, ?, ?)
+ON CONFLICT(puzzle_id, x, y) DO UPDATE SET
+    char = excluded.char,
+    is_block = excluded.is_block,
+    is_pencil = excluded.is_pencil
+`
+
+type UpdateCellParams struct {
+	PuzzleID string
+	X        int64
+	Y        int64
+	Char     string
+	IsBlock  bool
+	IsPencil bool
+}
+
+func (q *Queries) UpdateCell(ctx context.Context, arg UpdateCellParams) error {
+	_, err := q.db.ExecContext(ctx, updateCell,
+		arg.PuzzleID,
+		arg.X,
+		arg.Y,
+		arg.Char,
+		arg.IsBlock,
+		arg.IsPencil,
+	)
 	return err
 }

@@ -19,7 +19,7 @@ func main() {
 	defer dbConn.Close()
 
 	queries := db.New(dbConn)
-	service := app.NewService(queries)
+	service := app.NewService(queries, dbConn)
 	ctx := context.Background()
 
 	users := []struct {

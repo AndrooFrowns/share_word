@@ -23,7 +23,7 @@ func setupTestServer(t *testing.T) (*Server, *sql.DB) {
 	}
 
 	queries := db.New(dbConn)
-	service := app.NewService(queries)
+	service := app.NewService(queries, dbConn)
 	server := NewServer(service, dbConn)
 	return server, dbConn
 }

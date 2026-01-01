@@ -36,3 +36,37 @@ SELECT EXISTS (
     SELECT 1 FROM follows
     WHERE follower_id = ? AND followed_id = ?
 );
+
+-- name: CreatePuzzle :one
+INSERT INTO puzzles (id, owner_id, name, width, height)
+VALUES (?, ?, ?, ?, ?)
+RETURNING *;
+
+-- name: GetPuzzle :one
+SELECT * FROM puzzles WHERE id = ? LIMIT 1;
+
+-- name: UpdateCell :exec
+INSERT INTO cells (puzzle_id, x, y, char, is_block, is_pencil)
+VALUES (?, ?, ?, ?, ?, ?)
+ON CONFLICT(puzzle_id, x, y) DO UPDATE SET
+    char = excluded.char,
+    is_block = excluded.is_block,
+    is_pencil = excluded.is_pencil;
+
+-- name: GetCells :many
+SELECT * FROM cells WHERE puzzle_id = ? ORDER BY y, x;
+
+-- name: GetPuzzlesByOwner :many
+SELECT * FROM puzzles WHERE owner_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?;
+
+-- name: GetPuzzlesFromFollowing :many
+SELECT p.* FROM puzzles p
+JOIN follows f ON f.followed_id = p.owner_id
+WHERE f.follower_id = ?
+ORDER BY p.created_at DESC LIMIT ? OFFSET ?;
+
+-- name: GetLastPuzzleByOwner :one
+SELECT * FROM puzzles
+WHERE owner_id = ?
+ORDER BY created_at DESC
+LIMIT 1;

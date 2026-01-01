@@ -8,7 +8,7 @@ import (
 func TestSocialFlow(t *testing.T) {
 	queries, conn := setupTestDB(t)
 	defer conn.Close()
-	svc := NewService(queries)
+	svc := NewService(queries, conn)
 	ctx := context.Background()
 
 	// 1. Setup: Create two users
