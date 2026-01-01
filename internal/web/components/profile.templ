@@ -1,0 +1,58 @@
+package components
+
+import (
+	"share_word/internal/db"
+	"fmt"
+)
+
+templ Profile(targetUser *db.User, isFollowing bool, followers []db.User, following []db.User, limit, offset int64) {
+	<div id="profile-page" class="container stack">
+		<section class="card text-center stack">
+			<header>
+				<h1>{ targetUser.Username }</h1>
+			</header>
+			<div id="follow-actions">
+				if isFollowing {
+					<button class="btn-primary" data-on:click={ fmt.Sprintf("@post('/users/%s/unfollow')", targetUser.ID) }>
+						Unfollow
+					</button>
+				} else {
+					<button class="btn-primary" data-on:click={ fmt.Sprintf("@post('/users/%s/follow')", targetUser.ID) }>
+						Follow
+					</button>
+				}
+			</div>
+		</section>
+		<div class="grid-2">
+			<section class="card stack">
+				<h3>Following ({ fmt.Sprint(len(following)) })</h3>
+				<ul class="list-none stack">
+					for _, user := range following {
+						<li><a href={ templ.SafeURL(fmt.Sprintf("/users/%s", user.ID)) }>{ user.Username }</a></li>
+					}
+				</ul>
+				@Pagination(targetUser.ID, limit, offset, int64(len(following)))
+			</section>
+			<section class="card stack">
+				<h3>Followers ({ fmt.Sprint(len(followers)) })</h3>
+				<ul class="list-none stack">
+					for _, user := range followers {
+						<li><a href={ templ.SafeURL(fmt.Sprintf("/users/%s", user.ID)) }>{ user.Username }</a></li>
+					}
+				</ul>
+				@Pagination(targetUser.ID, limit, offset, int64(len(followers)))
+			</section>
+		</div>
+	</div>
+}
+
+templ Pagination(userID string, limit, offset, count int64) {
+	<nav class="mt-4">
+		if offset > 0 {
+			<a class="btn-primary" href={ templ.SafeURL(fmt.Sprintf("/users/%s?limit=%d&offset=%d", userID, limit, offset-limit)) }>Prev</a>
+		}
+		if count >= limit {
+			<a class="btn-primary" href={ templ.SafeURL(fmt.Sprintf("/users/%s?limit=%d&offset=%d", userID, limit, offset+limit)) }>Next</a>
+		}
+	</nav>
+}

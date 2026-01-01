@@ -19,5 +19,5 @@ func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	components.Layout(components.Home(user)).Render(r.Context(), w)
+	components.Layout(components.Home(user), user).Render(r.Context(), w)
 }

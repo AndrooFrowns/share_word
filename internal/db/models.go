@@ -8,6 +8,12 @@ import (
 	"time"
 )
 
+type Follow struct {
+	FollowerID string
+	FollowedID string
+	CreatedAt  time.Time
+}
+
 type Session struct {
 	Token  string
 	Data   []byte

@@ -40,6 +40,105 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
+const followUser = `-- name: FollowUser :exec
+INSERT INTO follows (follower_id, followed_id)
+VALUES (?, ?)
+`
+
+type FollowUserParams struct {
+	FollowerID string
+	FollowedID string
+}
+
+func (q *Queries) FollowUser(ctx context.Context, arg FollowUserParams) error {
+	_, err := q.db.ExecContext(ctx, followUser, arg.FollowerID, arg.FollowedID)
+	return err
+}
+
+const getFollowers = `-- name: GetFollowers :many
+SELECT u.id, u.username, u.password_hash, u.created_at FROM users u
+JOIN follows f on u.id = f.follower_id
+WHERE f.followed_id = ?
+ORDER BY f.created_at DESC
+LIMIT ? OFFSET ?
+`
+
+type GetFollowersParams struct {
+	FollowedID string
+	Limit      int64
+	Offset     int64
+}
+
+func (q *Queries) GetFollowers(ctx context.Context, arg GetFollowersParams) ([]User, error) {
+	rows, err := q.db.QueryContext(ctx, getFollowers, arg.FollowedID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.Username,
+			&i.PasswordHash,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getFollowing = `-- name: GetFollowing :many
+SELECT u.id, u.username, u.password_hash, u.created_at FROM users u
+JOIN follows f on u.id = f.followed_id
+WHERE f.follower_id = ?
+ORDER BY f.created_at DESC
+LIMIT ? OFFSET ?
+`
+
+type GetFollowingParams struct {
+	FollowerID string
+	Limit      int64
+	Offset     int64
+}
+
+func (q *Queries) GetFollowing(ctx context.Context, arg GetFollowingParams) ([]User, error) {
+	rows, err := q.db.QueryContext(ctx, getFollowing, arg.FollowerID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.Username,
+			&i.PasswordHash,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUser = `-- name: GetUser :one
 SELECT id, username, password_hash, created_at FROM users WHERE id = ? LIMIT 1
 `
@@ -70,4 +169,38 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const isFollowing = `-- name: IsFollowing :one
+SELECT EXISTS (
+    SELECT 1 FROM follows
+    WHERE follower_id = ? AND followed_id = ?
+)
+`
+
+type IsFollowingParams struct {
+	FollowerID string
+	FollowedID string
+}
+
+func (q *Queries) IsFollowing(ctx context.Context, arg IsFollowingParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, isFollowing, arg.FollowerID, arg.FollowedID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const unfollowUser = `-- name: UnfollowUser :exec
+DELETE FROM follows
+WHERE follower_id = ? AND followed_id = ?
+`
+
+type UnfollowUserParams struct {
+	FollowerID string
+	FollowedID string
+}
+
+func (q *Queries) UnfollowUser(ctx context.Context, arg UnfollowUserParams) error {
+	_, err := q.db.ExecContext(ctx, unfollowUser, arg.FollowerID, arg.FollowedID)
+	return err
 }
