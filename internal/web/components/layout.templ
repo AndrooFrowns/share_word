@@ -1,0 +1,27 @@
+package components
+
+templ Layout(contents templ.Component) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<title>ShareWord</title>
+			<link rel="stylesheet" href="/static/css/reset.css"/>
+			<link rel="stylesheet" href="/static/css/variables.css"/>
+			<link rel="stylesheet" href="/static/css/base.css"/>
+			<link rel="stylesheet" href="/static/css/components.css"/>
+			<script type="module" src="https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-RC.7/bundles/datastar.js"></script>
+		</head>
+		<body>
+			<header>
+				<nav>
+					<a href="/">ShareWord</a>
+				</nav>
+			</header>
+			<main>
+				@contents
+			</main>
+		</body>
+	</html>
+}

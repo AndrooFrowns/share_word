@@ -1,0 +1,24 @@
+# Binaries
+shareword
+*.exe
+*.test
+
+# Database (Local state and SQLite sidecar files)
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# Folders to ignore
+notes/
+tmp/
+
+# OS/Editor
+.DS_Store
+.idea/
+.vscode/
+.env
+
+# Go coverage
+*.out
+coverage.txt

@@ -1,0 +1,53 @@
+.card {
+  background: white;
+  padding: var(--size-4);
+  border-radius: var(--radius-2);
+  box-shadow: var(--shadow-2);
+  border: 1px solid var(--border);
+}
+.form-group {
+  margin-bottom: var(--size-4);
+}
+.form-group label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: var(--size-2);
+}
+.input {
+  width: 100%;
+  padding: var(--size-2);
+  border: 1px solid var(--border);
+  border-radius: var(--size-1);
+}
+.btn-primary {
+  width: 100%;
+  background: var(--brand);
+  color: white;
+  padding: var(--size-2);
+  border: none;
+  border-radius: var(--size-1);
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-primary:hover {
+  background: var(--brand-hover);
+}
+.alert-error {
+  background: var(--error-bg);
+  color: var(--error);
+  padding: var(--size-3);
+  border-radius: var(--size-1);
+  border: 1px solid var(--error);
+  margin-bottom: var(--size-3);
+}
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-3);
+}
+.text-center {
+  text-align: center;
+}
+.mt-4 {
+  margin-top: var(--size-4);
+}

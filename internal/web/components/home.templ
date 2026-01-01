@@ -1,0 +1,24 @@
+package components
+
+import (
+	"share_word/internal/db"
+)
+
+templ Home(user *db.User) {
+	<div class="container stack">
+		<section class="card text-center stack">
+			<header>
+				<h1>Welcome, { user.Username }</h1>
+			</header>
+			<p>You have successfully authenticated with ShareWorld.</p>
+			<footer class="mt-4">
+				<button
+					class="btn-primary"
+					data-on:click="@post('/logout')"
+				>
+					Logout
+				</button>
+			</footer>
+		</section>
+	</div>
+}
