@@ -86,6 +86,57 @@ func (s *Service) CreatePuzzle(ctx context.Context, puzzle_name, ownerID string,
 	return &created_puzzle, nil
 }
 
+type AnnotatedCell struct {
+	db.Cell
+	Number int // The clue number, 0 if no number
+}
+
+func (s *Service) CalculateNumbers(width, height int, cells []db.Cell) []AnnotatedCell {
+	// Create a 2D lookup for convenience
+	grid := make([][]db.Cell, height)
+	for i := range grid {
+		grid[i] = make([]db.Cell, width)
+	}
+	for _, c := range cells {
+		grid[c.Y][c.X] = c
+	}
+
+	annotated := make([]AnnotatedCell, 0, len(cells))
+	currentNumber := 1
+
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			cell := grid[y][x]
+			isNumber := false
+
+			if !cell.IsBlock {
+				startsAcross := (x == 0 || grid[y][x-1].IsBlock) &&
+					(x < width-1 && !grid[y][x+1].IsBlock)
+
+				startsDown := (y == 0 || grid[y-1][x].IsBlock) &&
+					(y < height-1 && !grid[y+1][x].IsBlock)
+
+				if startsAcross || startsDown {
+					isNumber = true
+				}
+			}
+
+			num := 0
+			if isNumber {
+				num = currentNumber
+				currentNumber++
+			}
+
+			annotated = append(annotated, AnnotatedCell{
+				Cell:   cell,
+				Number: num,
+			})
+		}
+	}
+
+	return annotated
+}
+
 func (s *Service) GetPuzzlesByOwner(ctx context.Context, ownerID string, limit, offset int) ([]db.Puzzle, error) {
 	return s.queries.GetPuzzlesByOwner(ctx, db.GetPuzzlesByOwnerParams{
 		OwnerID: ownerID,
