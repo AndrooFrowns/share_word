@@ -30,8 +30,8 @@ func (s *Service) CreatePuzzle(ctx context.Context, puzzle_name, ownerID string,
 		return nil, err
 	}
 
-	if width < 1 || height < 1 {
-		return nil, errors.New("Grid must be at least 1x1")
+	if width < 5 || height < 5 {
+		return nil, errors.New("Grid must be at least 5x5")
 	}
 
 	if height > 255 || width > 255 {

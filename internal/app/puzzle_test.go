@@ -37,8 +37,8 @@ func TestCreatePuzzle(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Run("successfully create 3x3 grid", func(t *testing.T) {
-		width, height := int64(3), int64(3)
+	t.Run("successfully create 5x5 grid", func(t *testing.T) {
+		width, height := int64(5), int64(5)
 		puzzle, err := service.CreatePuzzle(ctx, "Test Puzzle", user.ID, width, height)
 		if err != nil {
 			t.Fatalf("failed to create puzzle: %v", err)
@@ -68,7 +68,7 @@ func TestCreatePuzzle(t *testing.T) {
 
 	t.Run("default name for whitespace or empty", func(t *testing.T) {
 		service.SkipCooldown = true
-		p, err := service.CreatePuzzle(ctx, "   ", user.ID, 3, 3)
+		p, err := service.CreatePuzzle(ctx, "   ", user.ID, 5, 5)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -79,13 +79,28 @@ func TestCreatePuzzle(t *testing.T) {
 
 	t.Run("normalize name whitespace", func(t *testing.T) {
 		service.SkipCooldown = true
-		p, err := service.CreatePuzzle(ctx, "  My   Cool  Puzzle  ", user.ID, 3, 3)
+		p, err := service.CreatePuzzle(ctx, "  My   Cool  Puzzle  ", user.ID, 5, 5)
 		if err != nil {
 			t.Fatal(err)
 		}
 		expected := "My Cool Puzzle"
 		if p.Name != expected {
 			t.Errorf("expected %q, got %q", expected, p.Name)
+		}
+	})
+
+	t.Run("truncate long name", func(t *testing.T) {
+		service.SkipCooldown = true
+		longName := "This is a very long puzzle name that should be truncated because it exceeds the maximum allowed length of one hundred characters"
+		p, err := service.CreatePuzzle(ctx, longName, user.ID, 5, 5)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(p.Name) > 100 {
+			t.Errorf("expected length <= 100, got %d", len(p.Name))
+		}
+		if p.Name != longName[:100] {
+			t.Errorf("expected truncation, got %q", p.Name)
 		}
 	})
 
@@ -97,8 +112,10 @@ func TestCreatePuzzle(t *testing.T) {
 			height  int64
 			wantErr bool
 		}{
-			{"valid 1x1", 1, 1, false},
+			{"valid 5x5", 5, 5, false},
 			{"valid boundary 255x255", 255, 255, false},
+			{"invalid 1x1", 1, 1, true},
+			{"invalid 4x4", 4, 4, true},
 			{"invalid 0 width", 0, 15, true},
 			{"invalid negative width", -5, 5, true},
 			{"invalid over limit 256x256", 256, 256, true},
