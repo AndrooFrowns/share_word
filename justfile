@@ -33,6 +33,10 @@ build: generate
 run: generate
     go run cmd/server/main.go
 
+# Seed the database with test users
+seed:
+    go run cmd/seed/main.go
+
 # Clean up binaries and local database
 clean:
     rm -f shareword shareword.db

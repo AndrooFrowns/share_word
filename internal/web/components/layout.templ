@@ -1,6 +1,11 @@
 package components
 
-templ Layout(contents templ.Component) {
+import (
+	"share_word/internal/db"
+	"fmt"
+)
+
+templ Layout(contents templ.Component, user *db.User) {
 	<!DOCTYPE html>
 	<html lang="en">
 		<head>
@@ -16,7 +21,16 @@ templ Layout(contents templ.Component) {
 		<body>
 			<header>
 				<nav>
-					<a href="/">ShareWord</a>
+					<a href="/"><strong>ShareWord</strong></a>
+					<div class="nav-links">
+						if user != nil {
+							<a href={ templ.SafeURL(fmt.Sprintf("/users/%s", user.ID)) }>My Profile</a>
+							<button class="btn-link" data-on:click="@post('/logout')">Logout</button>
+						} else {
+							<a href="/login">Login</a>
+							<a href="/signup">Sign Up</a>
+						}
+					</div>
 				</nav>
 			</header>
 			<main>

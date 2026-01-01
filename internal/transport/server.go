@@ -49,15 +49,24 @@ func (s *Server) routes() {
 	s.Router.Get("/", s.handleHome)
 
 	s.Router.Get("/signup", func(w http.ResponseWriter, r *http.Request) {
-		component := components.Layout(components.Signup(""))
+		component := components.Layout(components.Signup(""), nil)
 		component.Render(r.Context(), w)
 	})
 	s.Router.Post("/signup", s.handleSignups)
 
 	s.Router.Get("/login", func(w http.ResponseWriter, r *http.Request) {
-		components.Layout(components.Login("")).Render(r.Context(), w)
+		components.Layout(components.Login(""), nil).Render(r.Context(), w)
 	})
 	s.Router.Post("/login", s.handleLogin)
 
 	s.Router.Post("/logout", s.handleLogout)
+
+	// Profiles
+	s.Router.Get("/users/{id}", s.handleViewProfile)
+	s.Router.Post("/users/{id}/follow", s.handleFollow)
+	s.Router.Post("/users/{id}/unfollow", s.handleUnfollow)
+
+	// One-click follow (Optional, but useful for invite links)
+	s.Router.Get("/follow/{id}", s.handleFollowInvite)
 }
+
