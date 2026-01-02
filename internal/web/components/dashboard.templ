@@ -17,11 +17,11 @@ templ Dashboard(user *db.User, myPuzzles []db.Puzzle, followingPuzzles []db.Puzz
 				<div class="grid-2">
 					<div class="form-group">
 						<label>Width</label>
-						<input name="width" type="number" class="input" min="5" max="255" data-bind:width/>
+						<input name="width" type="number" class="input" min="5" max="23" data-bind:width/>
 					</div>
 					<div class="form-group">
 						<label>Height</label>
-						<input name="height" type="number" class="input" min="5" max="255" data-bind:height/>
+						<input name="height" type="number" class="input" min="5" max="23" data-bind:height/>
 					</div>
 				</div>
 				<button type="button" class="btn-primary" data-on:click="@post('/puzzles')">Create Puzzle</button>

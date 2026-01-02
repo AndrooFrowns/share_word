@@ -2,33 +2,15 @@ package app
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"share_word/internal/db"
 	"testing"
 
-	"github.com/pressly/goose/v3"
 	_ "modernc.org/sqlite"
 )
 
-func setupPuzzleTest(t *testing.T) (*Service, *sql.DB) {
-	dbConn, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	goose.SetDialect("sqlite3")
-	if err := goose.Up(dbConn, "../../sql/schema"); err != nil {
-		t.Fatal(err)
-	}
-
-	queries := db.New(dbConn)
-	service := NewService(queries, dbConn)
-	return service, dbConn
-}
-
 func TestCreatePuzzle(t *testing.T) {
-	service, dbConn := setupPuzzleTest(t)
+	service, _, dbConn := SetupTestService(t)
 	defer dbConn.Close()
 	ctx := context.Background()
 
@@ -114,12 +96,12 @@ func TestCreatePuzzle(t *testing.T) {
 			wantErr bool
 		}{
 			{"valid 5x5", 5, 5, false},
-			{"valid boundary 255x255", 255, 255, false},
+			{"valid boundary 23x23", 23, 23, false},
 			{"invalid 1x1", 1, 1, true},
 			{"invalid 4x4", 4, 4, true},
 			{"invalid 0 width", 0, 15, true},
 			{"invalid negative width", -5, 5, true},
-			{"invalid over limit 256x256", 256, 256, true},
+			{"invalid over limit 24x24", 24, 24, true},
 		}
 
 		for _, tt := range tests {

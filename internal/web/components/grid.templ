@@ -6,52 +6,151 @@ import (
 	"fmt"
 )
 
-templ Grid(puzzle *db.Puzzle, cells []app.AnnotatedCell) {
+func getGridSignals(cells []app.AnnotatedCell, editingClueID, clueText, mode string) string {
+	signals := fmt.Sprintf("mode: '%s', focusedX: -1, focusedY: -1, cellValue: '', editingClueID: '%s', clueText: %q, _isSaving: false", mode, editingClueID, clueText)
+	for _, c := range cells {
+		if !c.IsBlock {
+			signals += fmt.Sprintf(", cell_%d_%d: %q", c.X, c.Y, c.Char)
+		}
+	}
+	return "{" + signals + "}"
+}
+
+templ PuzzleUI(puzzle *db.Puzzle, cells []app.AnnotatedCell, clues []app.Clue, mode string, editingClueID string, clueText string) {
 	<div 
-		id="crossword-container"
+		class="puzzle-layout" 
+		id="puzzle-ui"
+		data-signals={ getGridSignals(cells, editingClueID, clueText, mode) }
+	>
+		@Grid(puzzle, cells, mode)
+		@ClueSidebar(puzzle, clues, mode, editingClueID)
+	</div>
+}
+
+templ Grid(puzzle *db.Puzzle, cells []app.AnnotatedCell, mode string) {
+	<div 
+		id="crossword-grid"
 		class="crossword-grid" 
 		style={ fmt.Sprintf("grid-template-columns: repeat(%d, 1fr);", puzzle.Width) }
 	>
 		for _, cell := range cells {
-			@Cell(cell)
+			@Cell(cell, mode)
 		}
 	</div>
 }
 
-templ Cell(cell app.AnnotatedCell) {
+templ Cell(cell app.AnnotatedCell, mode string) {
+	{{ sigName := fmt.Sprintf("cell_%d_%d", cell.X, cell.Y) }}
 	<div 
 		id={ fmt.Sprintf("cell-%d-%d", cell.X, cell.Y) }
 		class={ "cell", templ.KV("block", cell.IsBlock) }
-		data-on:click={ fmt.Sprintf("@post('/puzzles/%s/cells/%d/%d/toggle-block')", cell.PuzzleID, cell.X, cell.Y) }
+		data-class={ fmt.Sprintf("{'focused': $focusedX == %d && $focusedY == %d}", cell.X, cell.Y) }
 	>
 		if !cell.IsBlock {
 			if cell.Number > 0 {
 				<span class="cell-number">{ fmt.Sprint(cell.Number) }</span>
 			}
+			
 			<input 
+				id={ fmt.Sprintf("cell-input-%d-%d", cell.X, cell.Y) }
 				type="text" 
-				maxlength="1" 
 				class="cell-input" 
 				value={ cell.Char }
-				data-on:input={ fmt.Sprintf("@post('/puzzles/%s/cells/%d/%d/update')", cell.PuzzleID, cell.X, cell.Y) }
-				data-on:click.stop=""
+				data-bind={ sigName }
+				if mode == "edit" {
+					readonly
+					data-on:click={ fmt.Sprintf("@post('/puzzles/%s/cells/%d/%d/toggle-block')", cell.PuzzleID, cell.X, cell.Y) }
+				} else {
+					data-on:click={ fmt.Sprintf("$focusedX = %d; $focusedY = %d; $cellValue = %s; el.select()", cell.X, cell.Y, "$"+sigName) }
+					data-on:input={ fmt.Sprintf("$cellValue = el.value.slice(-1); el.value = $cellValue; %s = $cellValue; @post('/puzzles/%s/cells/%d/%d/update')", "$"+sigName, cell.PuzzleID, cell.X, cell.Y) }
+				}
 			/>
+		} else {
+			if mode == "edit" {
+				<div 
+					style="width:100%; height:100%;" 
+					data-on:click={ fmt.Sprintf("@post('/puzzles/%s/cells/%d/%d/toggle-block')", cell.PuzzleID, cell.X, cell.Y) }
+				></div>
+			}
 		}
 	</div>
 }
 
-templ PuzzlePage(user *db.User, puzzle *db.Puzzle, cells []app.AnnotatedCell) {
+templ ClueSidebar(puzzle *db.Puzzle, clues []app.Clue, mode string, editingClueID string) {
+	<div class="clue-sidebar stack" id="clue-sidebar">
+		<section class="card stack">
+			<h3>Across</h3>
+			<ul class="list-none stack">
+				for _, clue := range clues {
+					if clue.Direction == app.DirectionAcross {
+						{{ clueID := fmt.Sprintf("%d-%s", clue.Number, clue.Direction) }}
+						@ClueItem(puzzle.ID, clue, mode, clueID == editingClueID)
+					}
+				}
+			</ul>
+		</section>
+		<section class="card stack">
+			<h3>Down</h3>
+			<ul class="list-none stack">
+				for _, clue := range clues {
+					if clue.Direction == app.DirectionDown {
+						{{ clueID := fmt.Sprintf("%d-%s", clue.Number, clue.Direction) }}
+						@ClueItem(puzzle.ID, clue, mode, clueID == editingClueID)
+					}
+				}
+			</ul>
+		</section>
+	</div>
+}
+
+templ ClueItem(puzzleID string, clue app.Clue, mode string, isEditing bool) {
+	{{ clueID := fmt.Sprintf("%d-%s", clue.Number, clue.Direction) }}
+	<li class="clue-item" id={ fmt.Sprintf("clue-li-%s", clueID) }>
+		<strong>{ fmt.Sprint(clue.Number) }.</strong>
+		if mode == "edit" {
+			if isEditing {
+				<input 
+					id={ fmt.Sprintf("clue-input-%s", clueID) }
+					type="text" 
+					class="input" 
+					autofocus
+					data-bind="clueText"
+					data-on:mounted="el.focus(); el.select()"
+					data-on:input.debounce_500ms={ fmt.Sprintf("@post('/puzzles/%s/clues/%d/%s/live')", puzzleID, clue.Number, clue.Direction) }
+					data-on:keydown={ fmt.Sprintf("if (evt.key === 'Enter') { evt.preventDefault(); $_isSaving = true; @post('/puzzles/%s/clues/%d/%s/save') } else if (evt.key === 'Escape') { evt.stopPropagation(); @get('/puzzles/%s/clues/%d/%s/view') }", puzzleID, clue.Number, clue.Direction, puzzleID, clue.Number, clue.Direction) }
+					data-on:blur={ fmt.Sprintf("if (!$_isSaving) @post('/puzzles/%s/clues/%d/%s/save')", puzzleID, clue.Number, clue.Direction) }
+				/>
+			} else {
+				<span 
+					id={ fmt.Sprintf("clue-span-%s", clueID) }
+					data-on:click={ fmt.Sprintf("@get('/puzzles/%s/clues/%d/%s/edit')", puzzleID, clue.Number, clue.Direction) }
+					class="clickable-hint"
+				>
+					if clue.Text != "" {
+						{ clue.Text }
+					} else {
+						<em class="text-muted">Click to add hint...</em>
+					}
+				</span>
+			}
+		} else {
+			<span>{ clue.Text }</span>
+		}
+	</li>
+}
+
+templ PuzzlePage(user *db.User, puzzle *db.Puzzle, cells []app.AnnotatedCell, clues []app.Clue, mode string) {
 	<div class="container">
 		<header class="text-center stack">
 			<h1>{ puzzle.Name }</h1>
-			<p class="text-muted">{ fmt.Sprintf("%d x %d Grid", puzzle.Width, puzzle.Height) }</p>
+			<nav class="tab-bar">
+				<a href={ templ.SafeURL(fmt.Sprintf("/puzzles/%s?mode=edit", puzzle.ID)) } 
+				   class={ "tab-link", templ.KV("active", mode == "edit") }>Edit</a>
+				<a href={ templ.SafeURL(fmt.Sprintf("/puzzles/%s?mode=solve", puzzle.ID)) } 
+				   class={ "tab-link", templ.KV("active", mode == "solve") }>Solve</a>
+			</nav>
 		</header>
 		
-		@Grid(puzzle, cells)
-		
-		<section class="card mt-4">
-			<h3>Controls</h3>
-			<p>Click a cell to toggle it as a block. Click a white cell to type letters.</p>
-		</section>
+		@PuzzleUI(puzzle, cells, clues, mode, "", "")
 	</div>
 }

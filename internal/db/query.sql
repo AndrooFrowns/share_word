@@ -42,6 +42,15 @@ INSERT INTO puzzles (id, owner_id, name, width, height)
 VALUES (?, ?, ?, ?, ?)
 RETURNING *;
 
+-- name: GetClues :many
+SELECT * FROM clues WHERE puzzle_id = ?;
+
+-- name: UpsertClue :exec
+INSERT INTO clues (puzzle_id, number, direction, text)
+VALUES (?, ?, ?, ?)
+ON CONFLICT(puzzle_id, number, direction) DO UPDATE SET
+    text = excluded.text;
+
 -- name: GetPuzzle :one
 SELECT * FROM puzzles WHERE id = ? LIMIT 1;
 

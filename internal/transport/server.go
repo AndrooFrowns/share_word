@@ -64,13 +64,16 @@ func (s *Server) routes() {
 	// Puzzles
 	s.Router.Post("/puzzles", s.handleCreatePuzzle)
 	s.Router.Get("/puzzles/{id}", s.handleViewPuzzle)
+	s.Router.Post("/puzzles/{id}/cells/{x}/{y}/toggle-block", s.handleToggleBlock)
+	s.Router.Post("/puzzles/{id}/cells/{x}/{y}/update", s.handleUpdateCell)
+	s.Router.Get("/puzzles/{id}/clues/{number}/{direction}/edit", s.handleEditClue)
+	s.Router.Get("/puzzles/{id}/clues/{number}/{direction}/view", s.handleViewClueItem)
+	s.Router.Post("/puzzles/{id}/clues/{number}/{direction}/live", s.handleLiveUpdateClue)
+	s.Router.Post("/puzzles/{id}/clues/{number}/{direction}/save", s.handleSaveClue)
 
 	// Profiles
 	s.Router.Get("/users/{id}", s.handleViewProfile)
 	s.Router.Post("/users/{id}/follow", s.handleFollow)
 	s.Router.Post("/users/{id}/unfollow", s.handleUnfollow)
-
-	// One-click follow (Optional, but useful for invite links)
-	s.Router.Get("/follow/{id}", s.handleFollowInvite)
 }
 
