@@ -114,12 +114,12 @@ func TestCreatePuzzle(t *testing.T) {
 			wantErr bool
 		}{
 			{"valid 5x5", 5, 5, false},
-			{"valid boundary 255x255", 255, 255, false},
+			{"valid boundary 23x23", 23, 23, false},
 			{"invalid 1x1", 1, 1, true},
 			{"invalid 4x4", 4, 4, true},
 			{"invalid 0 width", 0, 15, true},
 			{"invalid negative width", -5, 5, true},
-			{"invalid over limit 256x256", 256, 256, true},
+			{"invalid over limit 24x24", 24, 24, true},
 		}
 
 		for _, tt := range tests {

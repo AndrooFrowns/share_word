@@ -6,52 +6,84 @@ import (
 	"fmt"
 )
 
-templ Grid(puzzle *db.Puzzle, cells []app.AnnotatedCell) {
+templ Grid(puzzle *db.Puzzle, cells []app.AnnotatedCell, mode string) {
 	<div 
-		id="crossword-container"
+		id="crossword-grid"
 		class="crossword-grid" 
 		style={ fmt.Sprintf("grid-template-columns: repeat(%d, 1fr);", puzzle.Width) }
 	>
 		for _, cell := range cells {
-			@Cell(cell)
+			@Cell(cell, mode)
 		}
 	</div>
 }
 
-templ Cell(cell app.AnnotatedCell) {
+templ Cell(cell app.AnnotatedCell, mode string) {
 	<div 
 		id={ fmt.Sprintf("cell-%d-%d", cell.X, cell.Y) }
 		class={ "cell", templ.KV("block", cell.IsBlock) }
-		data-on:click={ fmt.Sprintf("@post('/puzzles/%s/cells/%d/%d/toggle-block')", cell.PuzzleID, cell.X, cell.Y) }
+		data-class={ fmt.Sprintf("{'focused': $focusedX == %d && $focusedY == %d}", cell.X, cell.Y) }
 	>
 		if !cell.IsBlock {
 			if cell.Number > 0 {
 				<span class="cell-number">{ fmt.Sprint(cell.Number) }</span>
 			}
+			
 			<input 
 				type="text" 
-				maxlength="1" 
 				class="cell-input" 
 				value={ cell.Char }
-				data-on:input={ fmt.Sprintf("@post('/puzzles/%s/cells/%d/%d/update')", cell.PuzzleID, cell.X, cell.Y) }
-				data-on:click.stop=""
+				if mode == "edit" {
+					readonly
+					data-on:click={ fmt.Sprintf("@post('/puzzles/%s/cells/%d/%d/toggle-block')", cell.PuzzleID, cell.X, cell.Y) }
+				} else {
+					data-on:click={ fmt.Sprintf("$focusedX = %d; $focusedY = %d; $cellValue = '%s'; evt.target.select()", cell.X, cell.Y, cell.Char) }
+					data-on:input={ fmt.Sprintf("$cellValue = evt.target.value.slice(-1); evt.target.value = $cellValue; @post('/puzzles/%s/cells/%d/%d/update')", cell.PuzzleID, cell.X, cell.Y) }
+				}
 			/>
+		} else {
+			if mode == "edit" {
+				<div 
+					style="width:100%; height:100%;" 
+					data-on:click={ fmt.Sprintf("@post('/puzzles/%s/cells/%d/%d/toggle-block')", cell.PuzzleID, cell.X, cell.Y) }
+				></div>
+			}
 		}
 	</div>
 }
 
-templ PuzzlePage(user *db.User, puzzle *db.Puzzle, cells []app.AnnotatedCell) {
-	<div class="container">
+templ ClueSidebar(puzzle *db.Puzzle, cells []app.AnnotatedCell, mode string) {
+	<div class="clue-sidebar stack">
+		<section class="card stack">
+			<h3>Across</h3>
+			<ul class="list-none stack">
+				<p class="text-muted">Clues loading...</p>
+			</ul>
+		</section>
+		<section class="card stack">
+			<h3>Down</h3>
+			<ul class="list-none stack">
+				<p class="text-muted">Clues loading...</p>
+			</ul>
+		</section>
+	</div>
+}
+
+templ PuzzlePage(user *db.User, puzzle *db.Puzzle, cells []app.AnnotatedCell, mode string) {
+	<div class="container" data-signals={ fmt.Sprintf("{mode: '%s', focusedX: -1, focusedY: -1, cellValue: ''}", mode) }>
 		<header class="text-center stack">
 			<h1>{ puzzle.Name }</h1>
-			<p class="text-muted">{ fmt.Sprintf("%d x %d Grid", puzzle.Width, puzzle.Height) }</p>
+			<nav class="tab-bar">
+				<a href={ templ.SafeURL(fmt.Sprintf("/puzzles/%s?mode=edit", puzzle.ID)) } 
+				   class={ "tab-link", templ.KV("active", mode == "edit") }>Edit</a>
+				<a href={ templ.SafeURL(fmt.Sprintf("/puzzles/%s?mode=solve", puzzle.ID)) } 
+				   class={ "tab-link", templ.KV("active", mode == "solve") }>Solve</a>
+			</nav>
 		</header>
 		
-		@Grid(puzzle, cells)
-		
-		<section class="card mt-4">
-			<h3>Controls</h3>
-			<p>Click a cell to toggle it as a block. Click a white cell to type letters.</p>
-		</section>
+		<div class="puzzle-layout">
+			@Grid(puzzle, cells, mode)
+			@ClueSidebar(puzzle, cells, mode)
+		</div>
 	</div>
 }
