@@ -19,7 +19,7 @@ func (s *Service) CreatePuzzle(ctx context.Context, puzzle_name, ownerID string,
 		return nil, err
 	}
 	defer tx.Rollback()
-	qtx := s.queries.WithTx(tx)
+	qtx := s.Queries.WithTx(tx)
 
 	lastPuzzle, err := qtx.GetLastPuzzleByOwner(ctx, ownerID)
 	if err == nil && !s.SkipCooldown {
@@ -138,7 +138,7 @@ func (s *Service) CalculateNumbers(width, height int, cells []db.Cell) []Annotat
 }
 
 func (s *Service) GetPuzzlesByOwner(ctx context.Context, ownerID string, limit, offset int) ([]db.Puzzle, error) {
-	return s.queries.GetPuzzlesByOwner(ctx, db.GetPuzzlesByOwnerParams{
+	return s.Queries.GetPuzzlesByOwner(ctx, db.GetPuzzlesByOwnerParams{
 		OwnerID: ownerID,
 		Limit:   int64(limit),
 		Offset:  int64(offset),
@@ -146,7 +146,7 @@ func (s *Service) GetPuzzlesByOwner(ctx context.Context, ownerID string, limit, 
 }
 
 func (s *Service) GetPuzzlesFromFollowing(ctx context.Context, followerID string, limit, offset int) ([]db.Puzzle, error) {
-	return s.queries.GetPuzzlesFromFollowing(ctx, db.GetPuzzlesFromFollowingParams{
+	return s.Queries.GetPuzzlesFromFollowing(ctx, db.GetPuzzlesFromFollowingParams{
 		FollowerID: followerID,
 		Limit:      int64(limit),
 		Offset:     int64(offset),

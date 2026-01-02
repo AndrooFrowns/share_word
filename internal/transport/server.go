@@ -63,6 +63,7 @@ func (s *Server) routes() {
 
 	// Puzzles
 	s.Router.Post("/puzzles", s.handleCreatePuzzle)
+	s.Router.Get("/puzzles/{id}", s.handleViewPuzzle)
 
 	// Profiles
 	s.Router.Get("/users/{id}", s.handleViewProfile)

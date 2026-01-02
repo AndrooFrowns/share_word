@@ -6,12 +6,12 @@ import (
 )
 
 type Service struct {
-	queries      *db.Queries
+	Queries      *db.Queries
 	db           *sql.DB
 	SkipCooldown bool
 }
 
 func NewService(q *db.Queries, database *sql.DB) *Service {
-	return &Service{queries: q, db: database, SkipCooldown: false}
+	return &Service{Queries: q, db: database, SkipCooldown: false}
 }
 

@@ -14,7 +14,7 @@ import (
 func (s *Service) AuthenticateUser(ctx context.Context, username, password string) (*db.User, error) {
 	err_msg := errors.New("invalid username or password")
 
-	user, err := s.queries.GetUserByUsername(ctx, username)
+	user, err := s.Queries.GetUserByUsername(ctx, username)
 	if err != nil {
 		// generic on purpose to avoid username harvesting
 		return nil, err_msg
@@ -38,7 +38,7 @@ func (s *Service) RegisterUser(ctx context.Context, username, password string) (
 		return nil, errors.New("invalid password")
 	}
 
-	_, err := s.queries.GetUserByUsername(ctx, username)
+	_, err := s.Queries.GetUserByUsername(ctx, username)
 	if err == nil {
 		return nil, errors.New("username taken")
 	}
@@ -50,7 +50,7 @@ func (s *Service) RegisterUser(ctx context.Context, username, password string) (
 
 	id := uuid.NewString()
 
-	created_user, err := s.queries.CreateUser(ctx, db.CreateUserParams{
+	created_user, err := s.Queries.CreateUser(ctx, db.CreateUserParams{
 		ID:           id,
 		Username:     username,
 		PasswordHash: string(hashed_password),
@@ -79,7 +79,7 @@ func isValidPassword(password string) bool {
 }
 
 func (s *Service) GetUserByID(ctx context.Context, id string) (*db.User, error) {
-	user, err := s.queries.GetUser(ctx, id)
+	user, err := s.Queries.GetUser(ctx, id)
 	if err != nil {
 		return nil, err
 	}

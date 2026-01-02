@@ -3,9 +3,39 @@ package transport
 import (
 	"fmt"
 	"net/http"
+	"share_word/internal/db"
+	"share_word/internal/web/components"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/starfederation/datastar-go/datastar"
 )
+
+func (s *Server) handleViewPuzzle(w http.ResponseWriter, r *http.Request) {
+	currentUserID := s.SessionManager.GetString(r.Context(), "userID")
+	puzzleID := chi.URLParam(r, "id")
+
+	p, err := s.Service.Queries.GetPuzzle(r.Context(), puzzleID)
+	if err != nil {
+		http.Error(w, "puzzle not found", http.StatusNotFound)
+		return
+	}
+
+	cells, err := s.Service.Queries.GetCells(r.Context(), puzzleID)
+	if err != nil {
+		http.Error(w, "failed to load cells", http.StatusInternalServerError)
+		return
+	}
+
+	annotated := s.Service.CalculateNumbers(int(p.Width), int(p.Height), cells)
+
+	var currentUser *db.User
+	if currentUserID != "" {
+		u, _ := s.Service.GetUserByID(r.Context(), currentUserID)
+		currentUser = u
+	}
+
+	components.Layout(components.PuzzlePage(currentUser, &p, annotated), currentUser).Render(r.Context(), w)
+}
 
 func (s *Server) handleCreatePuzzle(w http.ResponseWriter, r *http.Request) {
 	userID := s.SessionManager.GetString(r.Context(), "userID")

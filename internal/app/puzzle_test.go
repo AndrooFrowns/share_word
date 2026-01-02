@@ -48,7 +48,8 @@ func TestCreatePuzzle(t *testing.T) {
 			t.Errorf("expected name 'Test Puzzle', got %s", puzzle.Name)
 		}
 
-		cells, err := service.queries.GetCells(ctx, puzzle.ID)
+		// Verify cells were initialized
+		cells, err := service.Queries.GetCells(ctx, puzzle.ID)
 		if err != nil {
 			t.Fatal(err)
 		}
