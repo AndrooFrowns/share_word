@@ -98,3 +98,57 @@
     color: var(--white);
   }
 }
+
+/* Crossword Grid */
+.crossword-grid {
+  display: grid;
+  gap: 1px;
+  background-color: var(--gray-8);
+  border: 2px solid var(--gray-8);
+  width: 100%;
+  max-width: 600px;
+  margin: 2rem auto;
+  aspect-ratio: 1 / 1;
+}
+
+.cell {
+  background-color: var(--white);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  cursor: pointer;
+  aspect-ratio: 1 / 1;
+
+  &.block {
+    background-color: var(--gray-8);
+  }
+}
+
+.cell-number {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  font-size: clamp(0.5rem, 1.5vw, 0.75rem);
+  line-height: 1;
+  color: var(--gray-8);
+}
+
+.cell-input {
+  width: 100%;
+  height: 100%;
+  border: none;
+  text-align: center;
+  font-size: clamp(1rem, 3vw, 1.5rem);
+  font-weight: bold;
+  text-transform: uppercase;
+  background: transparent;
+  color: var(--text-main);
+  outline: none;
+
+  &:focus {
+    background-color: var(--red-1);
+  }
+}
+

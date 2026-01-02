@@ -1,0 +1,57 @@
+package components
+
+import (
+	"share_word/internal/db"
+	"share_word/internal/app"
+	"fmt"
+)
+
+templ Grid(puzzle *db.Puzzle, cells []app.AnnotatedCell) {
+	<div 
+		id="crossword-container"
+		class="crossword-grid" 
+		style={ fmt.Sprintf("grid-template-columns: repeat(%d, 1fr);", puzzle.Width) }
+	>
+		for _, cell := range cells {
+			@Cell(cell)
+		}
+	</div>
+}
+
+templ Cell(cell app.AnnotatedCell) {
+	<div 
+		id={ fmt.Sprintf("cell-%d-%d", cell.X, cell.Y) }
+		class={ "cell", templ.KV("block", cell.IsBlock) }
+		data-on:click={ fmt.Sprintf("@post('/puzzles/%s/cells/%d/%d/toggle-block')", cell.PuzzleID, cell.X, cell.Y) }
+	>
+		if !cell.IsBlock {
+			if cell.Number > 0 {
+				<span class="cell-number">{ fmt.Sprint(cell.Number) }</span>
+			}
+			<input 
+				type="text" 
+				maxlength="1" 
+				class="cell-input" 
+				value={ cell.Char }
+				data-on:input={ fmt.Sprintf("@post('/puzzles/%s/cells/%d/%d/update')", cell.PuzzleID, cell.X, cell.Y) }
+				data-on:click.stop=""
+			/>
+		}
+	</div>
+}
+
+templ PuzzlePage(user *db.User, puzzle *db.Puzzle, cells []app.AnnotatedCell) {
+	<div class="container">
+		<header class="text-center stack">
+			<h1>{ puzzle.Name }</h1>
+			<p class="text-muted">{ fmt.Sprintf("%d x %d Grid", puzzle.Width, puzzle.Height) }</p>
+		</header>
+		
+		@Grid(puzzle, cells)
+		
+		<section class="card mt-4">
+			<h3>Controls</h3>
+			<p>Click a cell to toggle it as a block. Click a white cell to type letters.</p>
+		</section>
+	</div>
+}
