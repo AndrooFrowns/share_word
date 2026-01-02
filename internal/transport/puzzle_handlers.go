@@ -32,6 +32,11 @@ func (s *Server) handleViewPuzzle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	annotated := s.Service.CalculateNumbers(int(p.Width), int(p.Height), cells)
+	clues, err := s.Service.GetFullClues(r.Context(), &p, cells)
+	if err != nil {
+		http.Error(w, "failed to load clues", http.StatusInternalServerError)
+		return
+	}
 
 	var currentUser *db.User
 	if currentUserID != "" {
@@ -39,7 +44,7 @@ func (s *Server) handleViewPuzzle(w http.ResponseWriter, r *http.Request) {
 		currentUser = u
 	}
 
-	components.Layout(components.PuzzlePage(currentUser, &p, annotated, mode), currentUser).Render(r.Context(), w)
+	components.Layout(components.PuzzlePage(currentUser, &p, annotated, clues, mode), currentUser).Render(r.Context(), w)
 }
 
 func (s *Server) handleToggleBlock(w http.ResponseWriter, r *http.Request) {
@@ -47,7 +52,12 @@ func (s *Server) handleToggleBlock(w http.ResponseWriter, r *http.Request) {
 	x, _ := strconv.ParseInt(chi.URLParam(r, "x"), 10, 64)
 	y, _ := strconv.ParseInt(chi.URLParam(r, "y"), 10, 64)
 
-	cells, _ := s.Service.Queries.GetCells(r.Context(), puzzleID)
+	cells, err := s.Service.Queries.GetCells(r.Context(), puzzleID)
+	if err != nil {
+		http.Error(w, "failed to load cells", http.StatusInternalServerError)
+		return
+	}
+
 	var targetCell *db.Cell
 	for _, c := range cells {
 		if c.X == x && c.Y == y {
@@ -57,7 +67,7 @@ func (s *Server) handleToggleBlock(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if targetCell != nil {
-		_ = s.Service.Queries.UpdateCell(r.Context(), db.UpdateCellParams{
+		err = s.Service.Queries.UpdateCell(r.Context(), db.UpdateCellParams{
 			PuzzleID: puzzleID,
 			X:        x,
 			Y:        y,
@@ -65,10 +75,13 @@ func (s *Server) handleToggleBlock(w http.ResponseWriter, r *http.Request) {
 			IsBlock:  !targetCell.IsBlock,
 			IsPencil: false,
 		})
+		if err != nil {
+			http.Error(w, "failed to update cell", http.StatusInternalServerError)
+			return
+		}
 	}
 
-	// We pass "edit" here because only Edit mode triggers this
-	s.renderGridPatch(w, r, puzzleID, "edit")
+	s.renderPuzzleUI(w, r, puzzleID, "edit", "", "")
 }
 
 func (s *Server) handleUpdateCell(w http.ResponseWriter, r *http.Request) {
@@ -80,9 +93,12 @@ func (s *Server) handleUpdateCell(w http.ResponseWriter, r *http.Request) {
 		CellValue string `json:"cellValue"`
 		Mode      string `json:"mode"`
 	}
-	_ = datastar.ReadSignals(r, &payload)
+	if err := datastar.ReadSignals(r, &payload); err != nil {
+		http.Error(w, "invalid signals", http.StatusBadRequest)
+		return
+	}
 
-	_ = s.Service.Queries.UpdateCell(r.Context(), db.UpdateCellParams{
+	err := s.Service.Queries.UpdateCell(r.Context(), db.UpdateCellParams{
 		PuzzleID: puzzleID,
 		X:        x,
 		Y:        y,
@@ -90,17 +106,122 @@ func (s *Server) handleUpdateCell(w http.ResponseWriter, r *http.Request) {
 		IsBlock:  false,
 		IsPencil: false,
 	})
+	if err != nil {
+		http.Error(w, "failed to update cell", http.StatusInternalServerError)
+		return
+	}
 
-	s.renderGridPatch(w, r, puzzleID, payload.Mode)
+	s.renderPuzzleUI(w, r, puzzleID, payload.Mode, "", "")
 }
 
-func (s *Server) renderGridPatch(w http.ResponseWriter, r *http.Request, puzzleID string, mode string) {
-	p, _ := s.Service.Queries.GetPuzzle(r.Context(), puzzleID)
-	cells, _ := s.Service.Queries.GetCells(r.Context(), puzzleID)
-	annotated := s.Service.CalculateNumbers(int(p.Width), int(p.Height), cells)
+func (s *Server) handleEditClue(w http.ResponseWriter, r *http.Request) {
+	puzzleID := chi.URLParam(r, "id")
+	number, _ := strconv.Atoi(chi.URLParam(r, "number"))
+	direction := chi.URLParam(r, "direction")
+	editingClueID := fmt.Sprintf("%d-%s", number, direction)
+
+	p, err := s.Service.Queries.GetPuzzle(r.Context(), puzzleID)
+	if err != nil {
+		http.Error(w, "puzzle not found", http.StatusNotFound)
+		return
+	}
+	cells, err := s.Service.Queries.GetCells(r.Context(), puzzleID)
+	if err != nil {
+		http.Error(w, "failed to load cells", http.StatusInternalServerError)
+		return
+	}
+	clues, err := s.Service.GetFullClues(r.Context(), &p, cells)
+	if err != nil {
+		http.Error(w, "failed to load clues", http.StatusInternalServerError)
+		return
+	}
+
+	clueText := ""
+	for _, c := range clues {
+		if c.Number == number && string(c.Direction) == direction {
+			clueText = c.Text
+			break
+		}
+	}
+
+	s.renderPuzzleUI(w, r, puzzleID, "edit", editingClueID, clueText)
+}
+
+func (s *Server) handleViewClueItem(w http.ResponseWriter, r *http.Request) {
+	puzzleID := chi.URLParam(r, "id")
+	s.renderPuzzleUI(w, r, puzzleID, "edit", "", "")
+}
+
+func (s *Server) handleLiveUpdateClue(w http.ResponseWriter, r *http.Request) {
+	puzzleID := chi.URLParam(r, "id")
+	number, _ := strconv.Atoi(chi.URLParam(r, "number"))
+	direction := chi.URLParam(r, "direction")
+
+	var payload struct {
+		ClueText string `json:"clueText"`
+	}
+	if err := datastar.ReadSignals(r, &payload); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	_ = s.Service.Queries.UpsertClue(r.Context(), db.UpsertClueParams{
+		PuzzleID:  puzzleID,
+		Number:    int64(number),
+		Direction: direction,
+		Text:      payload.ClueText,
+	})
 
 	w.WriteHeader(http.StatusOK)
-	datastar.NewSSE(w, r).PatchElementTempl(components.Grid(&p, annotated, mode))
+}
+
+func (s *Server) handleSaveClue(w http.ResponseWriter, r *http.Request) {
+	puzzleID := chi.URLParam(r, "id")
+	number, _ := strconv.Atoi(chi.URLParam(r, "number"))
+	direction := chi.URLParam(r, "direction")
+
+	var payload struct {
+		ClueText string `json:"clueText"`
+	}
+	if err := datastar.ReadSignals(r, &payload); err != nil {
+		http.Error(w, "invalid signals", http.StatusBadRequest)
+		return
+	}
+
+	err := s.Service.Queries.UpsertClue(r.Context(), db.UpsertClueParams{
+		PuzzleID:  puzzleID,
+		Number:    int64(number),
+		Direction: direction,
+		Text:      payload.ClueText,
+	})
+	if err != nil {
+		http.Error(w, "failed to save clue", http.StatusInternalServerError)
+		return
+	}
+
+	s.renderPuzzleUI(w, r, puzzleID, "edit", "", "")
+}
+
+func (s *Server) renderPuzzleUI(w http.ResponseWriter, r *http.Request, puzzleID string, mode string, editingClueID string, clueText string) {
+	p, err := s.Service.Queries.GetPuzzle(r.Context(), puzzleID)
+	if err != nil {
+		http.Error(w, "puzzle not found", http.StatusNotFound)
+		return
+	}
+	cells, err := s.Service.Queries.GetCells(r.Context(), puzzleID)
+	if err != nil {
+		http.Error(w, "failed to load cells", http.StatusInternalServerError)
+		return
+	}
+	annotated := s.Service.CalculateNumbers(int(p.Width), int(p.Height), cells)
+	clues, err := s.Service.GetFullClues(r.Context(), &p, cells)
+	if err != nil {
+		http.Error(w, "failed to load clues", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	datastar.NewSSE(w, r).PatchElementTempl(components.PuzzleUI(&p, annotated, clues, mode, editingClueID, clueText))
 }
 
 func (s *Server) handleCreatePuzzle(w http.ResponseWriter, r *http.Request) {

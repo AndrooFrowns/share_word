@@ -123,6 +123,38 @@ func (q *Queries) GetCells(ctx context.Context, puzzleID string) ([]Cell, error)
 	return items, nil
 }
 
+const getClues = `-- name: GetClues :many
+SELECT puzzle_id, number, direction, text FROM clues WHERE puzzle_id = ?
+`
+
+func (q *Queries) GetClues(ctx context.Context, puzzleID string) ([]Clue, error) {
+	rows, err := q.db.QueryContext(ctx, getClues, puzzleID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Clue
+	for rows.Next() {
+		var i Clue
+		if err := rows.Scan(
+			&i.PuzzleID,
+			&i.Number,
+			&i.Direction,
+			&i.Text,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getFollowers = `-- name: GetFollowers :many
 SELECT u.id, u.username, u.password_hash, u.created_at FROM users u
 JOIN follows f on u.id = f.follower_id
@@ -421,6 +453,30 @@ func (q *Queries) UpdateCell(ctx context.Context, arg UpdateCellParams) error {
 		arg.Char,
 		arg.IsBlock,
 		arg.IsPencil,
+	)
+	return err
+}
+
+const upsertClue = `-- name: UpsertClue :exec
+INSERT INTO clues (puzzle_id, number, direction, text)
+VALUES (?, ?, ?, ?)
+ON CONFLICT(puzzle_id, number, direction) DO UPDATE SET
+    text = excluded.text
+`
+
+type UpsertClueParams struct {
+	PuzzleID  string
+	Number    int64
+	Direction string
+	Text      string
+}
+
+func (q *Queries) UpsertClue(ctx context.Context, arg UpsertClueParams) error {
+	_, err := q.db.ExecContext(ctx, upsertClue,
+		arg.PuzzleID,
+		arg.Number,
+		arg.Direction,
+		arg.Text,
 	)
 	return err
 }

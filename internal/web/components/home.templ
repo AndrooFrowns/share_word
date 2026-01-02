@@ -8,17 +8,29 @@ templ Home(user *db.User) {
 	<div class="container stack">
 		<section class="card text-center stack">
 			<header>
-				<h1>Welcome, { user.Username }</h1>
+				if user != nil {
+					<h1>Welcome, { user.Username }</h1>
+				} else {
+					<h1>Welcome to ShareWorld</h1>
+				}
 			</header>
-			<p>You have successfully authenticated with ShareWorld.</p>
-			<footer class="mt-4">
-				<button
-					class="btn-primary"
-					data-on:click="@post('/logout')"
-				>
-					Logout
-				</button>
-			</footer>
+			if user != nil {
+				<p>You have successfully authenticated with ShareWorld.</p>
+				<footer class="mt-4">
+					<button
+						class="btn-primary"
+						data-on:click="@post('/logout')"
+					>
+						Logout
+					</button>
+				</footer>
+			} else {
+				<p>The collaborative crossword platform.</p>
+				<footer class="mt-4 grid-2">
+					<a href="/login" class="btn-primary">Login</a>
+					<a href="/signup" class="btn-link">Sign Up</a>
+				</footer>
+			}
 		</section>
 	</div>
 }

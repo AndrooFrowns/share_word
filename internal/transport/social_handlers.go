@@ -1,70 +1,80 @@
 package transport
 
 import (
-	"github.com/go-chi/chi/v5"
-	"github.com/starfederation/datastar-go/datastar"
 	"net/http"
 	"share_word/internal/db"
 	"share_word/internal/web/components"
 	"strconv"
+
+	"github.com/go-chi/chi/v5"
 )
 
-func (s *Server) handleFollowInvite(w http.ResponseWriter, r *http.Request) {
-	currentUserID := s.SessionManager.GetString(r.Context(), "userID")
-	followedID := chi.URLParam(r, "id")
-
-	_ = s.Service.FollowUser(r.Context(), currentUserID, followedID)
-	http.Redirect(w, r, "/users/"+followedID, http.StatusSeeOther)
-}
-
 func (s *Server) handleViewProfile(w http.ResponseWriter, r *http.Request) {
-	targetID := chi.URLParam(r, "id")
-	s.renderProfile(w, r, targetID, false)
-}
-
-func (s *Server) handleFollow(w http.ResponseWriter, r *http.Request) {
 	currentUserID := s.SessionManager.GetString(r.Context(), "userID")
-	targetID := chi.URLParam(r, "id")
-	_ = s.Service.FollowUser(r.Context(), currentUserID, targetID)
-	s.renderProfile(w, r, targetID, true)
-}
+	targetUserID := chi.URLParam(r, "id")
 
-func (s *Server) handleUnfollow(w http.ResponseWriter, r *http.Request) {
-	currentUserID := s.SessionManager.GetString(r.Context(), "userID")
-	targetID := chi.URLParam(r, "id")
-	_ = s.Service.UnfollowUser(r.Context(), currentUserID, targetID)
-	s.renderProfile(w, r, targetID, true)
-}
+	limitStr := r.URL.Query().Get("limit")
+	offsetStr := r.URL.Query().Get("offset")
 
-func (s *Server) renderProfile(w http.ResponseWriter, r *http.Request, targetID string, isFragment bool) {
-	currentUserID := s.SessionManager.GetString(r.Context(), "userID")
-	targetUser, err := s.Service.GetUserByID(r.Context(), targetID)
+	limit, _ := strconv.ParseInt(limitStr, 10, 64)
+	offset, _ := strconv.ParseInt(offsetStr, 10, 64)
+
+	if limit <= 0 {
+		limit = 10
+	}
+
+	targetUser, err := s.Service.GetUserByID(r.Context(), targetUserID)
 	if err != nil {
 		http.Error(w, "user not found", http.StatusNotFound)
 		return
 	}
 
-	limit, _ := strconv.ParseInt(r.URL.Query().Get("limit"), 10, 64)
-	offset, _ := strconv.ParseInt(r.URL.Query().Get("offset"), 10, 64)
-	if limit <= 0 {
-		limit = 10
+	followers, _ := s.Service.GetFollowers(r.Context(), targetUserID, limit, offset)
+	following, _ := s.Service.GetFollowing(r.Context(), targetUserID, limit, offset)
+	isFollowing := false
+	var currentUser *db.User
+
+	if currentUserID != "" {
+		u, _ := s.Service.GetUserByID(r.Context(), currentUserID)
+		currentUser = u
+		val, _ := s.Service.Queries.IsFollowing(r.Context(), db.IsFollowingParams{
+			FollowerID: currentUserID,
+			FollowedID: targetUserID,
+		})
+		isFollowing = val > 0
 	}
 
-	followers, _ := s.Service.GetFollowers(r.Context(), targetID, limit, offset)
-	following, _ := s.Service.GetFollowing(r.Context(), targetID, limit, offset)
-	isFollowing, _ := s.Service.IsFollowing(r.Context(), currentUserID, targetID)
-	puzzles, _ := s.Service.GetPuzzlesByOwner(r.Context(), targetID, 10, 0)
+	puzzles, _ := s.Service.Queries.GetPuzzlesByOwner(r.Context(), db.GetPuzzlesByOwnerParams{
+		OwnerID: targetUser.ID,
+		Limit:   10,
+		Offset:  0,
+	})
 
-	component := components.Profile(targetUser, isFollowing, followers, following, limit, offset, puzzles)
+	components.Layout(components.Profile(targetUser, isFollowing, followers, following, limit, offset, puzzles), currentUser).Render(r.Context(), w)
+}
 
-	if isFragment {
-		w.WriteHeader(http.StatusOK)
-		datastar.NewSSE(w, r).PatchElementTempl(component)
-	} else {
-		var currentUser *db.User
-		if currentUserID != "" {
-			currentUser, _ = s.Service.GetUserByID(r.Context(), currentUserID)
-		}
-		components.Layout(component, currentUser).Render(r.Context(), w)
+func (s *Server) handleFollow(w http.ResponseWriter, r *http.Request) {
+	followerID := s.SessionManager.GetString(r.Context(), "userID")
+	followedID := chi.URLParam(r, "id")
+
+	if followerID == "" {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
 	}
+
+	_ = s.Service.FollowUser(r.Context(), followerID, followedID)
+	http.Redirect(w, r, "/users/"+followedID, http.StatusSeeOther)
+}
+
+func (s *Server) handleUnfollow(w http.ResponseWriter, r *http.Request) {
+	followerID := s.SessionManager.GetString(r.Context(), "userID")
+	followedID := chi.URLParam(r, "id")
+
+	if followerID == "" {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	_ = s.Service.UnfollowUser(r.Context(), followerID, followedID)
+	http.Redirect(w, r, "/users/"+followedID, http.StatusSeeOther)
 }

@@ -2,33 +2,15 @@ package app
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"share_word/internal/db"
 	"testing"
 
-	"github.com/pressly/goose/v3"
 	_ "modernc.org/sqlite"
 )
 
-func setupPuzzleTest(t *testing.T) (*Service, *sql.DB) {
-	dbConn, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	goose.SetDialect("sqlite3")
-	if err := goose.Up(dbConn, "../../sql/schema"); err != nil {
-		t.Fatal(err)
-	}
-
-	queries := db.New(dbConn)
-	service := NewService(queries, dbConn)
-	return service, dbConn
-}
-
 func TestCreatePuzzle(t *testing.T) {
-	service, dbConn := setupPuzzleTest(t)
+	service, _, dbConn := SetupTestService(t)
 	defer dbConn.Close()
 	ctx := context.Background()
 

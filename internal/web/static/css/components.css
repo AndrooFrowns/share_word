@@ -212,6 +212,22 @@
   z-index: 5;
 }
 
+.clue-item {
+  padding: var(--size-1) 0;
+}
+
+.clickable-hint {
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: var(--radius-1);
+  transition: background 0.2s;
+}
+
+.clickable-hint:hover {
+  background: var(--gray-1);
+  color: var(--brand);
+}
+
 @media (max-width: 900px) {
   .puzzle-layout {
     grid-template-columns: 1fr;
