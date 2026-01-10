@@ -4,10 +4,21 @@ import (
 	"share_word/internal/db"
 	"share_word/internal/app"
 	"fmt"
+	"strings"
 )
 
-templ PuzzleUI(p db.GetPuzzleRow, cells []app.AnnotatedCell, clues []app.Clue, mode string, editingClueID string, focusedCell string) {
+templ PuzzleUI(p db.GetPuzzleRow, cells []app.AnnotatedCell, clues []app.Clue, mode string, editingClueID string, focusedCell string, activeWordCells map[string]bool, activeClue, inactiveClue *app.Clue) {
 	<div class="puzzle-layout" id="puzzle-ui">
+		if mode == "solve" {
+			<input 
+				id="puzzle-input"
+				type="text"
+				style="position: absolute; opacity: 0; pointer-events: none;"
+				data-on:keydown="if(evt.key === 'Backspace' || evt.key === ' ' || evt.key.startsWith('Arrow') || evt.key === 'Tab') { evt.preventDefault(); $lastKey = evt.key; $isShift = evt.shiftKey; $isCtrl = evt.ctrlKey; @post('/puzzles/' + $pID + '/input') }"
+				data-on:input="$lastKey = evt.target.value.slice(-1); evt.target.value = ''; @post('/puzzles/' + $pID + '/input')"
+				data-init="el.focus()"
+			/>
+		}
 		<div 
 			class="stage" 
 			id="puzzle-stage"
@@ -27,51 +38,131 @@ templ PuzzleUI(p db.GetPuzzleRow, cells []app.AnnotatedCell, clues []app.Clue, m
 					style={ fmt.Sprintf("--col-count: %d;", p.Width) }
 				>
 					for _, cell := range cells {
-						@Cell(cell, p.ID, mode, focusedCell)
+						@Cell(cell, p.ID, mode, focusedCell, activeWordCells)
 					}
 				</div>
 			</div>
 		</div>
 		
-		@ClueSidebar(p.ID, clues, mode, editingClueID)
+		@ClueSidebar(p.ID, clues, mode, editingClueID, activeClue)
+		@FocusBar(p.ID, activeClue, inactiveClue, focusedCell)
 	</div>
 }
 
-templ Cell(cell app.AnnotatedCell, puzzleID string, mode string, focusedCell string) {
+templ FocusBar(puzzleID string, activeClue, inactiveClue *app.Clue, focusedCell string) {
+	<div 
+		id="focus-bar" 
+		class="focus-bar"
+		if activeClue != nil {
+			data-show="true"
+		}
+	>
+		if activeClue != nil {
+			<div class="flex items-center justify-between w-full max-w-3xl gap-6">
+				<button 
+					class="focus-nav-btn"
+					data-on:click="$lastKey = 'Tab'; $isShift = true; @post('/puzzles/' + $pID + '/input'); document.getElementById('puzzle-input')?.focus()"
+					title="Previous Clue (Shift+Tab)"
+				>
+					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+				</button>
+
+				                				<div class="flex-1 min-w-0 stack" style="gap: 4px;">
+				                					<!-- Main Clue Row -->
+				                					<div 
+				                						class="flex items-center active-clue-pressable"
+				                						data-on:click={ fmt.Sprintf("$_sidebarOpen = true; document.getElementById('clue-li-%d-%s')?.scrollIntoView({behavior: 'smooth', block: 'center'}); document.getElementById('puzzle-input')?.focus()", activeClue.Number, activeClue.Direction) }
+				                						title="Click to see in sidebar"
+				                					>
+				                						<div class="clue-badge-col">
+				                							<div class="bg-primary text-white font-bold px-2 py-0.5 rounded text-[11px] whitespace-nowrap uppercase tracking-wider focus-bar-badge">
+				                								{ fmt.Sprint(activeClue.Number) }
+				                								if activeClue.Direction == app.DirectionAcross {
+				                									→
+				                								} else {
+				                									↓
+				                								}
+				                							</div>
+				                						</div>
+				                						<div class="flex-1 min-w-0 text-lg font-bold text-slate-900 truncate leading-tight">
+				                							if activeClue.Text != "" {
+				                								{ activeClue.Text }
+				                							} else {
+				                								<em class="text-slate-400 font-normal">No clue provided</em>
+				                							}
+				                						</div>
+				                					</div>										
+															<!-- Inactive Clue Row (Always rendered for height stability) -->
+															<div 
+																class="secondary-clue"
+																if inactiveClue != nil {
+																	data-on:click={ fmt.Sprintf("@post('/puzzles/%s/cells/%s/focus'); document.getElementById('puzzle-input')?.focus()", puzzleID, strings.ReplaceAll(focusedCell, ",", "/")) }
+																	title="Click to switch direction"
+																} else {
+																	style="visibility: hidden; pointer-events: none;"
+																}
+															>
+																<div class="clue-badge-col">
+																	if inactiveClue != nil {
+																		<div class="text-[10px] font-bold text-slate-500 uppercase tracking-tight bg-slate-100 px-1.5 py-0.5 rounded">
+																			{ fmt.Sprint(inactiveClue.Number) }
+																			if inactiveClue.Direction == app.DirectionAcross {
+																				→
+																			} else {
+																				↓
+																			}
+																		</div>
+																	}
+																</div>										<div class="flex-1 min-w-0 text-[11px] text-slate-400 truncate italic">
+											if inactiveClue != nil {
+												if inactiveClue.Text != "" {
+													{ inactiveClue.Text }
+												} else {
+													No clue provided
+												}
+											}
+										</div>
+									</div>
+												</div>
+
+				<button 
+					class="focus-nav-btn"
+					data-on:click="$lastKey = 'Tab'; $isShift = false; @post('/puzzles/' + $pID + '/input'); document.getElementById('puzzle-input')?.focus()"
+					title="Next Clue (Tab)"
+				>
+					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+				</button>
+			</div>
+		}
+	</div>
+}
+
+templ Cell(cell app.AnnotatedCell, puzzleID string, mode string, focusedCell string, activeWordCells map[string]bool) {
 	if mode == "edit" {
 		@CellEdit(cell, puzzleID)
 	} else {
-		@CellSolve(cell, puzzleID, focusedCell)
+		@CellSolve(cell, puzzleID, focusedCell, activeWordCells)
 	}
 }
 
-templ CellSolve(cell app.AnnotatedCell, puzzleID string, focusedCell string) {
-	{{ isFocused := focusedCell == fmt.Sprintf("%d,%d", cell.X, cell.Y) }}
+templ CellSolve(cell app.AnnotatedCell, puzzleID string, focusedCell string, activeWordCells map[string]bool) {
+	{{ 
+		coord := fmt.Sprintf("%d,%d", cell.X, cell.Y)
+		isFocused := focusedCell == coord
+		isWordActive := activeWordCells[coord]
+	}}
 	<div 
 		id={ fmt.Sprintf("cell-%d-%d", cell.X, cell.Y) }
-		class={ "cell", templ.KV("block", cell.IsBlock), templ.KV("cell-active", isFocused) }
+		class={ "cell", templ.KV("block", cell.IsBlock), templ.KV("cell-active", isFocused), templ.KV("word-active", isWordActive && !isFocused) }
 		if !cell.IsBlock {
-			data-on:click={ fmt.Sprintf("if($_isClick){ @post('/puzzles/%s/cells/%d/%d/focus') }", puzzleID, cell.X, cell.Y) }
+			data-on:click={ fmt.Sprintf("if($_isClick){ @post('/puzzles/%s/cells/%d/%d/focus'); document.getElementById('puzzle-input')?.focus() }", puzzleID, cell.X, cell.Y) }
 		}
 	>
 		if !cell.IsBlock {
 			if cell.Number > 0 {
 				<span class="cell-num">{ fmt.Sprint(cell.Number) }</span>
 			}
-			
-			if isFocused {
-				<input 
-					id={ fmt.Sprintf("cell-input-el-%d-%d", cell.X, cell.Y) }
-					type="text" 
-					class="cell-input" 
-					data-signals={ fmt.Sprintf("{cellValue: %q}", cell.Char) }
-					data-bind:cell-value
-					data-init="el.focus(); el.select()"
-					data-on:input={ fmt.Sprintf("@post('/puzzles/%s/cells/%d/%d/update')", puzzleID, cell.X, cell.Y) }
-				/>
-			} else {
-				<span class="cell-text">{ cell.Char }</span>
-			}
+			<span class="cell-text">{ cell.Char }</span>
 		}
 	</div>
 }
@@ -87,7 +178,7 @@ templ CellEdit(cell app.AnnotatedCell, puzzleID string) {
 	</div>
 }
 
-templ ClueSidebar(puzzleID string, clues []app.Clue, mode string, editingClueID string) {
+templ ClueSidebar(puzzleID string, clues []app.Clue, mode string, editingClueID string, activeClue *app.Clue) {
 	<aside 
 		class="clue-sidebar" 
 		id="clue-sidebar"
@@ -106,7 +197,7 @@ templ ClueSidebar(puzzleID string, clues []app.Clue, mode string, editingClueID 
 				<ul class="list-none stack">
 					for _, clue := range clues {
 						if clue.Direction == app.DirectionAcross {
-							@ClueItem(puzzleID, clue, mode, editingClueID)
+							@ClueItem(puzzleID, clue, mode, editingClueID, activeClue != nil && activeClue.Number == clue.Number && activeClue.Direction == clue.Direction)
 						}
 					}
 				</ul>
@@ -116,7 +207,7 @@ templ ClueSidebar(puzzleID string, clues []app.Clue, mode string, editingClueID 
 				<ul class="list-none stack">
 					for _, clue := range clues {
 						if clue.Direction == app.DirectionDown {
-							@ClueItem(puzzleID, clue, mode, editingClueID)
+							@ClueItem(puzzleID, clue, mode, editingClueID, activeClue != nil && activeClue.Number == clue.Number && activeClue.Direction == clue.Direction)
 						}
 					}
 				</ul>
@@ -125,11 +216,14 @@ templ ClueSidebar(puzzleID string, clues []app.Clue, mode string, editingClueID 
 	</aside>
 }
 
-templ ClueItem(puzzleID string, clue app.Clue, mode string, editingClueID string) {
+templ ClueItem(puzzleID string, clue app.Clue, mode string, editingClueID string, isActive bool) {
 	{{ clueID := fmt.Sprintf("%d-%s", clue.Number, clue.Direction) }}
 	<li 
-		class="clue-item" 
+		class={ "clue-item", templ.KV("clue-active", isActive) }
 		id={ fmt.Sprintf("clue-li-%s", clueID) }
+		if isActive {
+			data-init="if($_sidebarOpen) el.scrollIntoView({behavior: 'smooth', block: 'center'})"
+		}
 	>
 		<strong>{ fmt.Sprint(clue.Number) }</strong>
 		if mode == "edit" && editingClueID == clueID {
@@ -151,6 +245,8 @@ templ ClueItem(puzzleID string, clue app.Clue, mode string, editingClueID string
 				class="clickable-hint"
 				if mode == "edit" {
 					data-on:click={ fmt.Sprintf("@get('/puzzles/%s/clues/%d/%s/edit')", puzzleID, clue.Number, clue.Direction) }
+				} else {
+					data-on:click={ fmt.Sprintf("@post('/puzzles/%s/clues/%d/%s/focus')", puzzleID, clue.Number, clue.Direction) }
 				}
 			>
 				if clue.Text != "" {
@@ -167,7 +263,7 @@ templ ClueItem(puzzleID string, clue app.Clue, mode string, editingClueID string
 	</li>
 }
 
-templ PuzzlePage(user *db.User, p db.GetPuzzleRow, cells []app.AnnotatedCell, clues []app.Clue, mode string, serverVersion int64, editingClueID string) {
+templ PuzzlePage(user *db.User, p db.GetPuzzleRow, cells []app.AnnotatedCell, clues []app.Clue, mode string, serverVersion int64, editingClueID string, currentDir string) {
 	{{ streamURL := fmt.Sprintf("/puzzles/%s/stream", p.ID) }}
 	if mode == "edit" {
 		{{ streamURL = fmt.Sprintf("/puzzles/%s/edit/stream", p.ID) }}
@@ -175,7 +271,7 @@ templ PuzzlePage(user *db.User, p db.GetPuzzleRow, cells []app.AnnotatedCell, cl
 	<div 
 		id="puzzle-page"
 		style="height: 100%; display: flex; flex-direction: column;"
-		data-signals={ fmt.Sprintf("{mode: '%s', width: %d, height: %d, importedFiles: [], _sidebarOpen: true, _settingsOpen: false, _zoomLog: 0, _panX: 0, _panY: 0, _lastX: 0, _lastY: 0, _isDragging: false, _isClick: true, symmetryMode: 'rotational', direction: 'across', cellValue: '', clueText: '', _isSaving: false, serverVersion: %d, clientID: crypto.randomUUID()}", mode, p.Width, p.Height, serverVersion) }
+		data-signals={ fmt.Sprintf("{mode: '%s', pID: '%s', width: %d, height: %d, importedFiles: [], _sidebarOpen: true, _settingsOpen: false, _zoomLog: 0, _panX: 0, _panY: 0, _lastX: 0, _lastY: 0, _isDragging: false, _isClick: true, symmetryMode: 'rotational', direction: '%s', lastKey: '', isShift: false, isCtrl: false, cellValue: '', clueText: '', _isSaving: false, serverVersion: %d, clientID: crypto.randomUUID()}", mode, p.ID, p.Width, p.Height, currentDir, serverVersion) }
 		data-init={ fmt.Sprintf("@get('%s?clientID=' + $clientID)", streamURL) }
 	>
 		<header>
@@ -299,7 +395,7 @@ templ PuzzlePage(user *db.User, p db.GetPuzzleRow, cells []app.AnnotatedCell, cl
 		</header>
 		
 		<main id="puzzle-ui-container" style="flex: 1; display: flex; flex-direction: column;">
-			@PuzzleUI(p, cells, clues, mode, editingClueID, "")
+			@PuzzleUI(p, cells, clues, mode, editingClueID, "", nil, nil, nil)
 		</main>
 	</div>
 }

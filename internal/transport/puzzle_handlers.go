@@ -62,7 +62,10 @@ func (s *Server) viewPuzzle(w http.ResponseWriter, r *http.Request, mode string)
 		currentUser = u
 	}
 
-	components.Layout(components.PuzzlePage(currentUser, p, annotated, clues, mode, s.Service.StartTime, editingClueID), currentUser, false).Render(r.Context(), w)
+	currentDir := app.DirectionAcross
+	// We'll let the clientID generated client-side take over once SSE starts.
+
+	components.Layout(components.PuzzlePage(currentUser, p, annotated, clues, mode, s.Service.StartTime, editingClueID, string(currentDir)), currentUser, false).Render(r.Context(), w)
 }
 
 func (s *Server) handleSetBlock(w http.ResponseWriter, r *http.Request) {
@@ -138,13 +141,16 @@ func (s *Server) handleUpdateCell(w http.ResponseWriter, r *http.Request) {
 
 	var payload struct {
 		CellValue string `json:"cellValue"`
+		ClientID  string `json:"clientID"`
 	}
 	if err := datastar.ReadSignals(r, &payload); err != nil {
+		log.Printf("Error reading signals in handleUpdateCell: %v", err)
 		http.Error(w, "invalid signals", http.StatusBadRequest)
 		return
 	}
 
 	char := payload.CellValue
+	log.Printf("UpdateCell: %s at %d,%d (client: %s)", char, x, y, payload.ClientID)
 	if len(char) > 0 {
 		char = strings.ToUpper(char[len(char)-1:])
 	}
@@ -158,6 +164,26 @@ func (s *Server) handleUpdateCell(w http.ResponseWriter, r *http.Request) {
 		IsPencil: false,
 	})
 
+	// Auto-advance logic
+	if char != "" {
+		token := s.SessionManager.Token(r.Context())
+		key := token + ":" + payload.ClientID
+
+		currentDir := app.DirectionAcross
+		if d, ok := s.Service.CurrentDirections.Load(key); ok {
+			currentDir = d.(app.Direction)
+		}
+
+		cells, _ := s.Service.Queries.GetCells(r.Context(), puzzleID)
+
+		nx, ny, nDir := s.Service.GetAutoAdvanceTarget(r.Context(), puzzleID, cells, x, y, currentDir, true)
+		if nx != x || ny != y || nDir != currentDir {
+			log.Printf("Auto-advance: %d,%d -> %d,%d (%s)", x, y, nx, ny, nDir)
+			s.Service.FocusedCells.Store(key, fmt.Sprintf("%d,%d", nx, ny))
+			s.Service.CurrentDirections.Store(key, nDir)
+		}
+	}
+
 	s.Service.BroadcastUpdate(puzzleID, false)
 	w.WriteHeader(http.StatusOK)
 }
@@ -166,6 +192,7 @@ func (s *Server) handleFocusCell(w http.ResponseWriter, r *http.Request) {
 	puzzleID := chi.URLParam(r, "id")
 	x := chi.URLParam(r, "x")
 	y := chi.URLParam(r, "y")
+	coord := fmt.Sprintf("%s,%s", x, y)
 
 	var payload struct {
 		ClientID string `json:"clientID"`
@@ -173,7 +200,115 @@ func (s *Server) handleFocusCell(w http.ResponseWriter, r *http.Request) {
 	_ = datastar.ReadSignals(r, &payload)
 
 	token := s.SessionManager.Token(r.Context())
-	s.Service.FocusedCells.Store(token+":"+payload.ClientID, fmt.Sprintf("%s,%s", x, y))
+	key := token + ":" + payload.ClientID
+
+	if prevCoord, ok := s.Service.FocusedCells.Load(key); ok && prevCoord == coord {
+		// Toggle direction
+		currentDir := app.DirectionAcross
+		if d, ok := s.Service.CurrentDirections.Load(key); ok {
+			currentDir = d.(app.Direction)
+		}
+		if currentDir == app.DirectionAcross {
+			s.Service.CurrentDirections.Store(key, app.DirectionDown)
+		} else {
+			s.Service.CurrentDirections.Store(key, app.DirectionAcross)
+		}
+	}
+
+	s.Service.FocusedCells.Store(key, coord)
+	s.Service.BroadcastUpdate(puzzleID, false)
+	w.WriteHeader(http.StatusOK)
+}
+
+func (s *Server) handleNavigate(w http.ResponseWriter, r *http.Request) {
+	puzzleID := chi.URLParam(r, "id")
+	x, _ := strconv.ParseInt(chi.URLParam(r, "x"), 10, 64)
+	y, _ := strconv.ParseInt(chi.URLParam(r, "y"), 10, 64)
+	dir := chi.URLParam(r, "dir")   // forward or backward
+	mode := chi.URLParam(r, "mode") // across, down, or auto
+
+	var payload struct {
+		ClientID string `json:"clientID"`
+	}
+	if err := datastar.ReadSignals(r, &payload); err != nil {
+		log.Printf("Error reading signals in handleNavigate: %v", err)
+	}
+
+	log.Printf("Navigate: %s %s from %d,%d (client: %s)", dir, mode, x, y, payload.ClientID)
+
+	token := s.SessionManager.Token(r.Context())
+	key := token + ":" + payload.ClientID
+
+	currentDir := app.DirectionAcross
+	if d, ok := s.Service.CurrentDirections.Load(key); ok {
+		currentDir = d.(app.Direction)
+	}
+
+	navDir := currentDir
+	if mode == "across" {
+		navDir = app.DirectionAcross
+	} else if mode == "down" {
+		navDir = app.DirectionDown
+	}
+
+	p, _ := s.Service.Queries.GetPuzzle(r.Context(), puzzleID)
+	cells, _ := s.Service.Queries.GetCells(r.Context(), puzzleID)
+
+	forward := dir == "forward"
+	var nx, ny int64
+	var nDir app.Direction
+
+	if mode == "auto" && !forward {
+		// Backspace logic: If current cell has a letter, clear it and stay.
+		// If current cell is empty, move back and clear.
+		var currentChar string
+		for _, c := range cells {
+			if c.X == x && c.Y == y {
+				currentChar = c.Char
+				break
+			}
+		}
+
+		if currentChar != "" {
+			log.Printf("Backspace: Clearing current cell %d,%d", x, y)
+			_ = s.Service.Queries.UpdateCell(r.Context(), db.UpdateCellParams{
+				PuzzleID: puzzleID,
+				X:        x,
+				Y:        y,
+				Char:     "",
+				IsBlock:  false,
+				IsPencil: false,
+			})
+			s.Service.BroadcastUpdate(puzzleID, false)
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+	}
+
+	if mode == "auto" {
+		nx, ny, nDir = s.Service.GetAutoAdvanceTarget(r.Context(), puzzleID, cells, x, y, navDir, forward)
+	} else {
+		nx, ny = s.Service.GetNextCell(int(p.Width), int(p.Height), cells, x, y, navDir, forward)
+		nDir = navDir
+	}
+
+	if nx != x || ny != y || nDir != currentDir {
+		log.Printf("Navigated to %d,%d (%s)", nx, ny, nDir)
+		s.Service.FocusedCells.Store(key, fmt.Sprintf("%d,%d", nx, ny))
+		s.Service.CurrentDirections.Store(key, nDir)
+		// If moving backward in auto mode, clear the target cell
+		if !forward && mode == "auto" {
+			_ = s.Service.Queries.UpdateCell(r.Context(), db.UpdateCellParams{
+				PuzzleID: puzzleID,
+				X:        nx,
+				Y:        ny,
+				Char:     "",
+				IsBlock:  false,
+				IsPencil: false,
+			})
+		}
+	}
+
 	s.Service.BroadcastUpdate(puzzleID, false)
 	w.WriteHeader(http.StatusOK)
 }
@@ -229,6 +364,155 @@ func (s *Server) handleEditClue(w http.ResponseWriter, r *http.Request) {
 	s.Service.BroadcastUpdate(puzzleID, false)
 	w.WriteHeader(http.StatusOK)
 }
+func (s *Server) handleFocusClue(w http.ResponseWriter, r *http.Request) {
+	puzzleID := chi.URLParam(r, "id")
+	number, _ := strconv.Atoi(chi.URLParam(r, "number"))
+	direction := app.Direction(chi.URLParam(r, "direction"))
+
+	var payload struct {
+		ClientID string `json:"clientID"`
+	}
+	_ = datastar.ReadSignals(r, &payload)
+
+	token := s.SessionManager.Token(r.Context())
+	key := token + ":" + payload.ClientID
+
+	p, _ := s.Service.Queries.GetPuzzle(r.Context(), puzzleID)
+	cells, _ := s.Service.Queries.GetCells(r.Context(), puzzleID)
+	annotated := s.Service.CalculateNumbers(int(p.Width), int(p.Height), cells)
+
+	var fx, fy int64
+	for _, ac := range annotated {
+		if ac.Number == number {
+			fx, fy = ac.X, ac.Y
+			break
+		}
+	}
+
+	s.Service.FocusedCells.Store(key, fmt.Sprintf("%d,%d", fx, fy))
+	s.Service.CurrentDirections.Store(key, direction)
+
+	s.Service.BroadcastUpdate(puzzleID, false)
+	w.WriteHeader(http.StatusOK)
+}
+
+func (s *Server) handlePuzzleInput(w http.ResponseWriter, r *http.Request) {
+	puzzleID := chi.URLParam(r, "id")
+
+	var payload struct {
+		Key      string `json:"lastKey"`
+		IsShift  bool   `json:"isShift"`
+		IsCtrl   bool   `json:"isCtrl"`
+		ClientID string `json:"clientID"`
+	}
+	if err := datastar.ReadSignals(r, &payload); err != nil {
+		http.Error(w, "invalid signals", http.StatusBadRequest)
+		return
+	}
+
+	token := s.SessionManager.Token(r.Context())
+	key := token + ":" + payload.ClientID
+
+	focusedCell := ""
+	if val, ok := s.Service.FocusedCells.Load(key); ok {
+		focusedCell = val.(string)
+	}
+
+	if focusedCell == "" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	var x, y int64
+	fmt.Sscanf(focusedCell, "%d,%d", &x, &y)
+
+	currentDir := app.DirectionAcross
+	if d, ok := s.Service.CurrentDirections.Load(key); ok {
+		currentDir = d.(app.Direction)
+	}
+
+	p, _ := s.Service.Queries.GetPuzzle(r.Context(), puzzleID)
+	cells, _ := s.Service.Queries.GetCells(r.Context(), puzzleID)
+
+	modifierHeld := payload.IsShift || payload.IsCtrl
+
+	switch payload.Key {
+	case "Tab":
+		forward := !payload.IsShift
+		nx, ny, nDir := s.Service.GetClueJumpTarget(r.Context(), puzzleID, cells, x, y, currentDir, forward)
+		s.Service.FocusedCells.Store(key, fmt.Sprintf("%d,%d", nx, ny))
+		s.Service.CurrentDirections.Store(key, nDir)
+	case "ArrowRight":
+		if modifierHeld {
+			s.Service.CurrentDirections.Store(key, app.DirectionAcross)
+		} else {
+			nx, ny := s.Service.GetNextCell(int(p.Width), int(p.Height), cells, x, y, app.DirectionAcross, true)
+			s.Service.FocusedCells.Store(key, fmt.Sprintf("%d,%d", nx, ny))
+		}
+	case "ArrowLeft":
+		if modifierHeld {
+			s.Service.CurrentDirections.Store(key, app.DirectionAcross)
+		} else {
+			nx, ny := s.Service.GetNextCell(int(p.Width), int(p.Height), cells, x, y, app.DirectionAcross, false)
+			s.Service.FocusedCells.Store(key, fmt.Sprintf("%d,%d", nx, ny))
+		}
+	case "ArrowDown":
+		if modifierHeld {
+			s.Service.CurrentDirections.Store(key, app.DirectionDown)
+		} else {
+			nx, ny := s.Service.GetNextCell(int(p.Width), int(p.Height), cells, x, y, app.DirectionDown, true)
+			s.Service.FocusedCells.Store(key, fmt.Sprintf("%d,%d", nx, ny))
+		}
+	case "ArrowUp":
+		if modifierHeld {
+			s.Service.CurrentDirections.Store(key, app.DirectionDown)
+		} else {
+			nx, ny := s.Service.GetNextCell(int(p.Width), int(p.Height), cells, x, y, app.DirectionDown, false)
+			s.Service.FocusedCells.Store(key, fmt.Sprintf("%d,%d", nx, ny))
+		}
+	case "Backspace":
+		// Same backspace logic as before
+		var currentChar string
+		for _, c := range cells {
+			if c.X == x && c.Y == y {
+				currentChar = c.Char
+				break
+			}
+		}
+		if currentChar != "" {
+			_ = s.Service.Queries.UpdateCell(r.Context(), db.UpdateCellParams{
+				PuzzleID: puzzleID, X: x, Y: y, Char: "", IsBlock: false, IsPencil: false,
+			})
+		} else {
+			nx, ny, nDir := s.Service.GetAutoAdvanceTarget(r.Context(), puzzleID, cells, x, y, currentDir, false)
+			s.Service.FocusedCells.Store(key, fmt.Sprintf("%d,%d", nx, ny))
+			s.Service.CurrentDirections.Store(key, nDir)
+			_ = s.Service.Queries.UpdateCell(r.Context(), db.UpdateCellParams{
+				PuzzleID: puzzleID, X: nx, Y: ny, Char: "", IsBlock: false, IsPencil: false,
+			})
+		}
+	case " ":
+		// Non-overwriting space
+		nx, ny, nDir := s.Service.GetAutoAdvanceTarget(r.Context(), puzzleID, cells, x, y, currentDir, true)
+		s.Service.FocusedCells.Store(key, fmt.Sprintf("%d,%d", nx, ny))
+		s.Service.CurrentDirections.Store(key, nDir)
+	default:
+		// Assume single character
+		if len(payload.Key) == 1 {
+			char := strings.ToUpper(payload.Key)
+			_ = s.Service.Queries.UpdateCell(r.Context(), db.UpdateCellParams{
+				PuzzleID: puzzleID, X: x, Y: y, Char: char, IsBlock: false, IsPencil: false,
+			})
+			nx, ny, nDir := s.Service.GetAutoAdvanceTarget(r.Context(), puzzleID, cells, x, y, currentDir, true)
+			s.Service.FocusedCells.Store(key, fmt.Sprintf("%d,%d", nx, ny))
+			s.Service.CurrentDirections.Store(key, nDir)
+		}
+	}
+
+	s.Service.BroadcastUpdate(puzzleID, false)
+	w.WriteHeader(http.StatusOK)
+}
+
 func (s *Server) handlePuzzleStreamSolve(w http.ResponseWriter, r *http.Request) {
 	s.handlePuzzleStream(w, r, "solve")
 }
@@ -308,20 +592,44 @@ func (s *Server) pushPuzzleState(ctx context.Context, sse *datastar.ServerSentEv
 	}
 
 	token := s.SessionManager.Token(ctx)
+	key := token + ":" + clientID
+
 	editingClueID := ""
-	if val, ok := s.Service.EditingClues.Load(token + ":" + clientID); ok {
+	if val, ok := s.Service.EditingClues.Load(key); ok {
 		editingClueID = val.(string)
 	}
 
 	focusedCell := ""
-	if val, ok := s.Service.FocusedCells.Load(token + ":" + clientID); ok {
+	if val, ok := s.Service.FocusedCells.Load(key); ok {
 		focusedCell = val.(string)
+	}
+
+	currentDir := app.DirectionAcross
+	if d, ok := s.Service.CurrentDirections.Load(key); ok {
+		currentDir = d.(app.Direction)
 	}
 
 	annotated := s.Service.CalculateNumbers(int(p.Width), int(p.Height), cells)
 	clues, _ := s.Service.GetFullClues(ctx, p.ID, cells)
 
-	sse.PatchElementTempl(components.PuzzleUI(p, annotated, clues, mode, editingClueID, focusedCell))
+	var activeWordCells map[string]bool
+	var activeClue *app.Clue
+	var inactiveClue *app.Clue
+	if focusedCell != "" {
+		var fx, fy int64
+		fmt.Sscanf(focusedCell, "%d,%d", &fx, &fy)
+		activeWordCells = s.Service.GetActiveWordCells(int(p.Width), int(p.Height), cells, fx, fy, currentDir)
+		activeClue = s.Service.GetActiveClue(int(p.Width), int(p.Height), cells, clues, fx, fy, currentDir)
+
+		otherDir := app.DirectionAcross
+		if currentDir == app.DirectionAcross {
+			otherDir = app.DirectionDown
+		}
+		inactiveClue = s.Service.GetActiveClue(int(p.Width), int(p.Height), cells, clues, fx, fy, otherDir)
+	}
+
+	sse.PatchSignals([]byte(fmt.Sprintf(`{"direction": %q}`, currentDir)))
+	sse.PatchElementTempl(components.PuzzleUI(p, annotated, clues, mode, editingClueID, focusedCell, activeWordCells, activeClue, inactiveClue))
 }
 
 func (s *Server) handleCreatePuzzle(w http.ResponseWriter, r *http.Request) {

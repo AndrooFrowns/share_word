@@ -400,6 +400,344 @@ func (s *Service) ImportPuzzle(ctx context.Context, puzzleID string, data []byte
 	return tx.Commit()
 }
 
+func (s *Service) GetActiveWordCells(width, height int, cells []db.Cell, focusedX, focusedY int64, direction Direction) map[string]bool {
+	activeCells := make(map[string]bool)
+	if focusedX < 0 || focusedY < 0 {
+		return activeCells
+	}
+
+	cellMap := make(map[string]db.Cell)
+	for _, c := range cells {
+		cellMap[fmt.Sprintf("%d,%d", c.X, c.Y)] = c
+	}
+
+	// Check if starting cell is valid
+	start, ok := cellMap[fmt.Sprintf("%d,%d", focusedX, focusedY)]
+	if !ok || start.IsBlock {
+		return activeCells
+	}
+
+	activeCells[fmt.Sprintf("%d,%d", focusedX, focusedY)] = true
+
+	if direction == DirectionAcross {
+		// Scan left
+		for x := focusedX - 1; x >= 0; x-- {
+			c, ok := cellMap[fmt.Sprintf("%d,%d", x, focusedY)]
+			if !ok || c.IsBlock {
+				break
+			}
+			activeCells[fmt.Sprintf("%d,%d", x, focusedY)] = true
+		}
+		// Scan right
+		for x := focusedX + 1; x < int64(width); x++ {
+			c, ok := cellMap[fmt.Sprintf("%d,%d", x, focusedY)]
+			if !ok || c.IsBlock {
+				break
+			}
+			activeCells[fmt.Sprintf("%d,%d", x, focusedY)] = true
+		}
+	} else {
+		// Scan up
+		for y := focusedY - 1; y >= 0; y-- {
+			c, ok := cellMap[fmt.Sprintf("%d,%d", focusedX, y)]
+			if !ok || c.IsBlock {
+				break
+			}
+			activeCells[fmt.Sprintf("%d,%d", focusedX, y)] = true
+		}
+		// Scan down
+		for y := focusedY + 1; y < int64(height); y++ {
+			c, ok := cellMap[fmt.Sprintf("%d,%d", focusedX, y)]
+			if !ok || c.IsBlock {
+				break
+			}
+			activeCells[fmt.Sprintf("%d,%d", focusedX, y)] = true
+		}
+	}
+
+	return activeCells
+}
+
+
+func (s *Service) GetClueJumpTarget(ctx context.Context, pID string, cells []db.Cell, x, y int64, dir Direction, forward bool) (int64, int64, Direction) {
+	p, err := s.Queries.GetPuzzle(ctx, pID)
+	if err != nil {
+		return x, y, dir
+	}
+
+	width, height := int(p.Width), int(p.Height)
+	clues, _ := s.GetFullClues(ctx, pID, cells)
+	curClue := s.GetActiveClue(width, height, cells, clues, x, y, dir)
+	if curClue == nil {
+		if len(clues) > 0 {
+			return s.getClueStart(width, height, cells, &clues[0])
+		}
+		return x, y, dir
+	}
+
+	// Create a logical order: all Across clues, then all Down clues
+	var logicalClues []Clue
+	for _, c := range clues {
+		if c.Direction == DirectionAcross {
+			logicalClues = append(logicalClues, c)
+		}
+	}
+	for _, c := range clues {
+		if c.Direction == DirectionDown {
+			logicalClues = append(logicalClues, c)
+		}
+	}
+
+	if len(logicalClues) == 0 {
+		return x, y, dir
+	}
+
+	// Find current clue index in logical list
+	curIdx := -1
+	for i := range logicalClues {
+		if logicalClues[i].Number == curClue.Number && logicalClues[i].Direction == curClue.Direction {
+			curIdx = i
+			break
+		}
+	}
+
+	if curIdx == -1 {
+		return x, y, dir
+	}
+
+	var targetClue Clue
+	if forward {
+		targetIdx := (curIdx + 1) % len(logicalClues)
+		targetClue = logicalClues[targetIdx]
+	} else {
+		targetIdx := (curIdx - 1 + len(logicalClues)) % len(logicalClues)
+		targetClue = logicalClues[targetIdx]
+	}
+
+	return s.getClueStart(width, height, cells, &targetClue)
+}
+
+func (s *Service) getClueStart(width, height int, cells []db.Cell, targetClue *Clue) (int64, int64, Direction) {
+	annotated := s.CalculateNumbers(width, height, cells)
+	for _, ac := range annotated {
+		if ac.Number == targetClue.Number {
+			return ac.X, ac.Y, targetClue.Direction
+		}
+	}
+	return 0, 0, targetClue.Direction // Fallback
+}
+
+func (s *Service) GetAutoAdvanceTarget(ctx context.Context, pID string, cells []db.Cell, x, y int64, dir Direction, forward bool) (int64, int64, Direction) {
+	p, err := s.Queries.GetPuzzle(ctx, pID)
+	if err != nil {
+		return x, y, dir
+	}
+
+	width, height := int(p.Width), int(p.Height)
+	cellMap := make(map[string]db.Cell)
+	for _, c := range cells {
+		cellMap[fmt.Sprintf("%d,%d", c.X, c.Y)] = c
+	}
+
+	// 1. Try immediate next cell in current word
+	nx, ny := x, y
+	delta := int64(1)
+	if !forward {
+		delta = -1
+	}
+
+	if dir == DirectionAcross {
+		nx += delta
+	} else {
+		ny += delta
+	}
+
+	if nx >= 0 && nx < int64(width) && ny >= 0 && ny < int64(height) {
+		if !cellMap[fmt.Sprintf("%d,%d", nx, ny)].IsBlock {
+			return nx, ny, dir
+		}
+	}
+
+	// 2. We are at the end/start of a word, find the next/prev clue
+	clues, _ := s.GetFullClues(ctx, pID, cells)
+	curClue := s.GetActiveClue(width, height, cells, clues, x, y, dir)
+	if curClue == nil {
+		return x, y, dir
+	}
+
+	var targetClue *Clue
+	if forward {
+		// Find next clue in same direction
+		for i := range clues {
+			if clues[i].Direction == dir && clues[i].Number > curClue.Number {
+				targetClue = &clues[i]
+				break
+			}
+		}
+		// If not found, switch direction
+		if targetClue == nil {
+			otherDir := DirectionAcross
+			if dir == DirectionAcross {
+				otherDir = DirectionDown
+			}
+			for i := range clues {
+				if clues[i].Direction == otherDir {
+					targetClue = &clues[i]
+					break
+				}
+			}
+		}
+	} else {
+		// Find prev clue in same direction
+		for i := len(clues) - 1; i >= 0; i-- {
+			if clues[i].Direction == dir && clues[i].Number < curClue.Number {
+				targetClue = &clues[i]
+				break
+			}
+		}
+		// If not found, switch direction (to the last clue of other direction)
+		if targetClue == nil {
+			otherDir := DirectionAcross
+			if dir == DirectionAcross {
+				otherDir = DirectionDown
+			}
+			for i := len(clues) - 1; i >= 0; i-- {
+				if clues[i].Direction == otherDir {
+					targetClue = &clues[i]
+					break
+				}
+			}
+		}
+	}
+
+	// Wrap around if still nil
+	if targetClue == nil && len(clues) > 0 {
+		if forward {
+			targetClue = &clues[0]
+		} else {
+			targetClue = &clues[len(clues)-1]
+		}
+	}
+
+	if targetClue != nil {
+		annotated := s.CalculateNumbers(width, height, cells)
+		if forward {
+			// Start of clue
+			for _, ac := range annotated {
+				if ac.Number == targetClue.Number {
+					return ac.X, ac.Y, targetClue.Direction
+				}
+			}
+		} else {
+			// End of clue
+			var lastX, lastY int64
+			foundStart := false
+			for _, ac := range annotated {
+				if ac.Number == targetClue.Number {
+					lastX, lastY = ac.X, ac.Y
+					foundStart = true
+					break
+				}
+			}
+			if foundStart {
+				// Scan to end of word
+				for {
+					tx, ty := lastX, lastY
+					if targetClue.Direction == DirectionAcross {
+						tx++
+					} else {
+						ty++
+					}
+					if tx < int64(width) && ty < int64(height) && !cellMap[fmt.Sprintf("%d,%d", tx, ty)].IsBlock {
+						lastX, lastY = tx, ty
+					} else {
+						break
+					}
+				}
+				return lastX, lastY, targetClue.Direction
+			}
+		}
+	}
+
+	return x, y, dir
+}
+
+func (s *Service) GetActiveClue(width, height int, cells []db.Cell, clues []Clue, fx, fy int64, dir Direction) *Clue {
+	cellMap := make(map[string]db.Cell)
+	for _, c := range cells {
+		cellMap[fmt.Sprintf("%d,%d", c.X, c.Y)] = c
+	}
+
+	curX, curY := fx, fy
+	if dir == DirectionAcross {
+		for curX > 0 {
+			prev, ok := cellMap[fmt.Sprintf("%d,%d", curX-1, curY)]
+			if !ok || prev.IsBlock {
+				break
+			}
+			curX--
+		}
+	} else {
+		for curY > 0 {
+			prev, ok := cellMap[fmt.Sprintf("%d,%d", curX, curY-1)]
+			if !ok || prev.IsBlock {
+				break
+			}
+			curY--
+		}
+	}
+
+	annotated := s.CalculateNumbers(width, height, cells)
+	var clueNum int
+	for _, ac := range annotated {
+		if ac.X == curX && ac.Y == curY {
+			clueNum = ac.Number
+			break
+		}
+	}
+
+	if clueNum == 0 {
+		return nil
+	}
+
+	for i := range clues {
+		if clues[i].Number == clueNum && clues[i].Direction == dir {
+			return &clues[i]
+		}
+	}
+
+	return nil
+}
+
+func (s *Service) GetNextCell(width, height int, cells []db.Cell, x, y int64, dir Direction, forward bool) (int64, int64) {
+	cellMap := make(map[string]db.Cell)
+	for _, c := range cells {
+		cellMap[fmt.Sprintf("%d,%d", c.X, c.Y)] = c
+	}
+
+	nx, ny := x, y
+	delta := int64(1)
+	if !forward {
+		delta = -1
+	}
+
+	for {
+		if dir == DirectionAcross {
+			nx += delta
+		} else {
+			ny += delta
+		}
+
+		if nx < 0 || nx >= int64(width) || ny < 0 || ny >= int64(height) {
+			return x, y // Stop at boundaries
+		}
+
+		if !cellMap[fmt.Sprintf("%d,%d", nx, ny)].IsBlock {
+			return nx, ny
+		}
+	}
+}
+
 type Point struct {
 	X, Y int64
 }

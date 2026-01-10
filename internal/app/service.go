@@ -37,6 +37,9 @@ type Service struct {
 
 	// SessionToken:ClientID -> X,Y
 	FocusedCells sync.Map
+
+	// SessionToken:ClientID -> Direction
+	CurrentDirections sync.Map
 }
 
 func NewService(queries *db.Queries, dbConn *sql.DB) *Service {

@@ -77,11 +77,13 @@ func (s *Server) routes() {
 		r.Post("/puzzles/{id}/cells/{x}/{y}/set-block/{state}", s.handleSetBlockState)
 		r.Post("/puzzles/{id}/cells/{x}/{y}/update", s.handleUpdateCell)
 		r.Post("/puzzles/{id}/cells/{x}/{y}/focus", s.handleFocusCell)
+		r.Post("/puzzles/{id}/input", s.handlePuzzleInput)
 		r.Post("/puzzles/{id}/resize", s.handleResizePuzzle)
 		r.Post("/puzzles/{id}/import", s.handleImportPuzzle)
 		r.Get("/puzzles/{id}/clues/{number}/{direction}/edit", s.handleEditClue)
-		r.Post("/puzzles/{id}/clues/{number}/{direction}/save", s.handleSaveClue)
-
+				r.Post("/puzzles/{id}/clues/{number}/{direction}/save", s.handleSaveClue)
+				r.Post("/puzzles/{id}/clues/{number}/{direction}/focus", s.handleFocusClue)
+		
 		// Profiles
 		r.Get("/users/{id}", s.handleViewProfile)
 		r.Post("/users/{id}/follow", s.handleFollow)
