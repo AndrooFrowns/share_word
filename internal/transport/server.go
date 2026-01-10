@@ -2,9 +2,11 @@ package transport
 
 import (
 	"database/sql"
+	"io/fs"
 	"net/http"
 	"share_word/internal/app"
 	"share_word/internal/web/components"
+	"share_word/internal/web/static"
 	"time"
 
 	"github.com/alexedwards/scs/sqlite3store"
@@ -17,17 +19,21 @@ type Server struct {
 	Service        *app.Service
 	Router         *chi.Mux
 	SessionManager *scs.SessionManager
+	IsProd         bool
 }
 
-func NewServer(svc *app.Service, db *sql.DB) *Server {
+func NewServer(svc *app.Service, db *sql.DB, isProd bool) *Server {
 	sessionManager := scs.New()
 	sessionManager.Store = sqlite3store.New(db)
 	sessionManager.Lifetime = time.Hour * 24 * 7 * 6
+	sessionManager.Cookie.SameSite = http.SameSiteLaxMode
+	sessionManager.Cookie.Secure = isProd
 
 	s := &Server{
 		Service:        svc,
 		Router:         chi.NewRouter(),
 		SessionManager: sessionManager,
+		IsProd:         isProd,
 	}
 	s.routes()
 	return s
@@ -42,7 +48,9 @@ func (s *Server) routes() {
 		})
 	})
 
-	fs := http.FileServer(http.Dir("internal/web/static"))
+	// Use embedded static assets
+	staticFS, _ := fs.Sub(static.Assets, ".")
+	fs := http.FileServer(http.FS(staticFS))
 	s.Router.Handle("/static/*", http.StripPrefix("/static/", fs))
 
 	s.Router.Get("/health", s.handleHealth)

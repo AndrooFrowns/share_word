@@ -14,6 +14,7 @@ import (
 )
 
 var EnableHotReload = os.Getenv("HOT_RELOAD") == "true"
+var Version = "1"
 
 func Layout(contents templ.Component, user *db.User, showNavbar bool) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {

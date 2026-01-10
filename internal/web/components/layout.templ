@@ -6,6 +6,7 @@ import (
 )
 
 var EnableHotReload = os.Getenv("HOT_RELOAD") == "true"
+var Version = "1"
 
 templ Layout(contents templ.Component, user *db.User, showNavbar bool) {
 	<!DOCTYPE html>

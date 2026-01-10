@@ -2,19 +2,33 @@ package transport
 
 import (
 	"context"
+	"database/sql"
 	"net/http"
 	"net/http/httptest"
 	"share_word/internal/app"
 	"share_word/internal/db"
 	"strings"
 	"testing"
+
+	"github.com/pressly/goose/v3"
+	_ "modernc.org/sqlite"
 )
 
+func setupTestDB(t *testing.T) *sql.DB {
+	dbConn, _ := sql.Open("sqlite", ":memory:")
+	goose.SetDialect("sqlite3")
+	goose.Up(dbConn, "../../sql/schema/")
+	return dbConn
+}
+
 func setupTestServer(t *testing.T) (*Server, *db.Queries, func()) {
-	svc, queries, dbConn := app.SetupTestService(t)
-	server := NewServer(svc, dbConn)
+	dbConn := setupTestDB(t)
+	queries := db.New(dbConn)
+	service := app.NewService(queries, dbConn)
+	server := NewServer(service, dbConn, false)
 
 	cleanup := func() {
+		service.Shutdown()
 		dbConn.Close()
 	}
 
