@@ -3,6 +3,7 @@ package transport
 import (
 	"database/sql"
 	"io/fs"
+	"log"
 	"net/http"
 	"share_word/internal/app"
 	"share_word/internal/web/components"
