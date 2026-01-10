@@ -25,16 +25,21 @@ FROM alpine:latest
 
 WORKDIR /app
 
-# Install CA certificates and create a non-root user
-RUN apk add --no-cache ca-certificates tzdata && \
-    addgroup -S appgroup && adduser -S appuser -G appgroup
+# Install CA certificates and tzdata
+RUN apk add --no-cache ca-certificates tzdata
+
+# Create a group and user with explicit UID/GID 1000
+RUN addgroup -g 1000 appgroup && \
+    adduser -u 1000 -G appgroup -S -D appuser
 
 # Copy binary from the builder stage
 COPY --from=builder /app/shareword .
 
-# Set ownership to the non-root user
-RUN chown -R appuser:appgroup /app && \
-    mkdir /data && chown -R appuser:appgroup /data
+# Set ownership and create data directory
+RUN mkdir -p /data && \
+    chown -R appuser:appgroup /app && \
+    chown -R appuser:appgroup /data && \
+    chmod 775 /data
 
 # Switch to the non-root user
 USER appuser
