@@ -1,0 +1,26 @@
+{
+    "version": "http://ipuz.org/v2",
+    "kind": ["http://ipuz.org/crossword#1"],
+    "title": "Test IPUZ",
+    "author": "Andrew",
+    "dimensions": { "width": 5, "height": 5 },
+    "puzzle": [
+        ["A", "B", "C", "D", "E"],
+        ["F", "#", "G", "#", "H"],
+        ["I", "J", "K", "L", "M"],
+        ["N", "#", "O", "#", "P"],
+        ["Q", "R", "S", "T", "U"]
+    ],
+    "clues": {
+        "Across": [
+            [1, "First row"],
+            [6, "Middle row"],
+            [11, "Bottom row"]
+        ],
+        "Down": [
+            [1, "First col"],
+            [2, "Third col"],
+            [3, "Fifth col"]
+        ]
+    }
+}

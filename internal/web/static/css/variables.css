@@ -1,25 +1,25 @@
 :root {
-  --blue-6: #2563eb;
-  --blue-7: #1d4ed8;
-  --red-1: #fef2f2;
-  --red-6: #dc2626;
-  --gray-1: #f8fafc;
-  --gray-2: #e2e8f0;
-  --gray-8: #1e293b;
-  --white: #ffffff;
-
-  --brand: var(--blue-6);
-  --brand-hover: var(--blue-7);
-  --error: var(--red-6);
-  --error-bg: var(--red-1);
-  --text-main: var(--gray-8);
-  --border: var(--gray-2);
-  --bg: var(--gray-1);
-
-  --size-1: 0.25rem;
-  --size-2: 0.5rem;
-  --size-3: 1rem;
-  --size-4: 1.5rem;
-  --radius-2: 0.5rem;
-  --shadow-2: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    --slate-50:  #f8fafc;
+    --slate-100: #f1f5f9;
+    --slate-200: #e2e8f0;
+    --slate-300: #cbd5e1;
+    --slate-400: #94a3b8;
+    --slate-500: #64748b;
+    --slate-900: #0f172a;
+    --primary: #3b82f6;
+    --primary-light: #dbeafe;
+    --highlight-cell: #bfdbfe;
+    --focus-cell: #3b82f6;
+    
+    --brand: var(--primary);
+    --brand-hover: #2563eb;
+    --white: #ffffff;
+    --text-main: var(--slate-900);
+    --border: var(--slate-200);
+    
+    --space-2: 8px;
+    --space-4: 16px;
+    --space-6: 24px;
+    
+    --shadow-float: 0 -10px 40px -5px rgba(0,0,0,0.1);
 }

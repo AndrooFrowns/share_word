@@ -29,6 +29,7 @@ func main() {
 
 	queries := db.New(dbConn)
 	service := app.NewService(queries, dbConn)
+	defer service.Shutdown()
 	server := transport.NewServer(service, dbConn)
 
 	log.Println("Server starting on http://localhost:8080")

@@ -159,7 +159,7 @@ func TestCalculateNumbers(t *testing.T) {
 		width, height := 3, 3
 		cells := []db.Cell{
 			{X: 0, Y: 0, IsBlock: false}, {X: 1, Y: 0, IsBlock: false}, {X: 2, Y: 0, IsBlock: false},
-			{X: 0, Y: 1, IsBlock: false}, {X: 1, Y: 1, IsBlock: true},  {X: 2, Y: 1, IsBlock: false},
+			{X: 0, Y: 1, IsBlock: false}, {X: 1, Y: 1, IsBlock: true}, {X: 2, Y: 1, IsBlock: false},
 			{X: 0, Y: 2, IsBlock: false}, {X: 1, Y: 2, IsBlock: false}, {X: 2, Y: 2, IsBlock: false},
 		}
 
@@ -184,8 +184,8 @@ func TestCalculateNumbers(t *testing.T) {
 		// 0,2 should be #1 (starts 1x3 across)
 		width, height := 3, 3
 		cells := []db.Cell{
-			{X: 0, Y: 0, IsBlock: false}, {X: 1, Y: 0, IsBlock: true},  {X: 2, Y: 0, IsBlock: false},
-			{X: 0, Y: 1, IsBlock: true},  {X: 1, Y: 1, IsBlock: true},  {X: 2, Y: 1, IsBlock: true},
+			{X: 0, Y: 0, IsBlock: false}, {X: 1, Y: 0, IsBlock: true}, {X: 2, Y: 0, IsBlock: false},
+			{X: 0, Y: 1, IsBlock: true}, {X: 1, Y: 1, IsBlock: true}, {X: 2, Y: 1, IsBlock: true},
 			{X: 0, Y: 2, IsBlock: false}, {X: 1, Y: 2, IsBlock: false}, {X: 2, Y: 2, IsBlock: false},
 		}
 

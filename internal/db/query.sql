@@ -42,6 +42,9 @@ INSERT INTO puzzles (id, owner_id, name, width, height)
 VALUES (?, ?, ?, ?, ?)
 RETURNING *;
 
+-- name: UpdatePuzzleDimensions :exec
+UPDATE puzzles SET width = ?, height = ? WHERE id = ?;
+
 -- name: GetClues :many
 SELECT * FROM clues WHERE puzzle_id = ?;
 
@@ -51,19 +54,42 @@ VALUES (?, ?, ?, ?)
 ON CONFLICT(puzzle_id, number, direction) DO UPDATE SET
     text = excluded.text;
 
+-- name: DeleteAllClues :exec
+DELETE FROM clues WHERE puzzle_id = ?;
+
 -- name: GetPuzzle :one
 SELECT * FROM puzzles WHERE id = ? LIMIT 1;
 
 -- name: UpdateCell :exec
-INSERT INTO cells (puzzle_id, x, y, char, is_block, is_pencil)
-VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO cells (puzzle_id, x, y, char, is_block, is_pencil, solution)
+VALUES (?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(puzzle_id, x, y) DO UPDATE SET
     char = excluded.char,
     is_block = excluded.is_block,
     is_pencil = excluded.is_pencil;
 
+-- name: ImportCell :exec
+INSERT INTO cells (puzzle_id, x, y, char, is_block, is_pencil, solution)
+VALUES (?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(puzzle_id, x, y) DO UPDATE SET
+    char = excluded.char,
+    solution = excluded.solution,
+    is_block = excluded.is_block,
+    is_pencil = excluded.is_pencil;
+
+-- name: ToggleBlock :exec
+UPDATE cells 
+SET is_block = NOT is_block, char = '' 
+WHERE puzzle_id = ? AND x = ? AND y = ?;
+
 -- name: GetCells :many
 SELECT * FROM cells WHERE puzzle_id = ? ORDER BY y, x;
+
+-- name: DeleteCellsOutside :exec
+DELETE FROM cells WHERE puzzle_id = ? AND (x >= ? OR y >= ?);
+
+-- name: DeleteAllCells :exec
+DELETE FROM cells WHERE puzzle_id = ?;
 
 -- name: GetPuzzlesByOwner :many
 SELECT * FROM puzzles WHERE owner_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?;

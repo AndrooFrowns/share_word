@@ -15,6 +15,7 @@ type Cell struct {
 	Char     string
 	IsBlock  bool
 	IsPencil bool
+	Solution string
 }
 
 type Clue struct {

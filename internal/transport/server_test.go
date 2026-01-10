@@ -109,14 +109,14 @@ func TestLogout(t *testing.T) {
 
 	ctx := context.Background()
 	_, _ = server.Service.RegisterUser(ctx, "logoutuser", "password123456")
-	
+
 	loginBody := `{"username":"logoutuser", "password":"password123456"}`
 	loginReq := httptest.NewRequest("POST", "/login", strings.NewReader(loginBody))
 	loginReq.Header.Set("Content-Type", "application/json")
 	loginReq.Header.Set("Datastar-Request", "true")
 	loginRR := httptest.NewRecorder()
 	server.Router.ServeHTTP(loginRR, loginReq)
-	
+
 	cookieHeader := loginRR.Header().Get("Set-Cookie")
 
 	logoutReq := httptest.NewRequest("POST", "/logout", nil)

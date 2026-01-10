@@ -20,7 +20,7 @@ func TestClueLogic(t *testing.T) {
 	cells, _ := queries.GetCells(ctx, p.ID)
 	clues, err := svc.GetFullClues(ctx, p, cells)
 	require.NoError(t, err)
-	
+
 	found1A := false
 	for _, c := range clues {
 		if c.Number == 1 && c.Direction == DirectionAcross {

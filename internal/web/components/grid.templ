@@ -6,151 +6,301 @@ import (
 	"fmt"
 )
 
-func getGridSignals(cells []app.AnnotatedCell, editingClueID, clueText, mode string) string {
-	signals := fmt.Sprintf("mode: '%s', focusedX: -1, focusedY: -1, cellValue: '', editingClueID: '%s', clueText: %q, _isSaving: false", mode, editingClueID, clueText)
-	for _, c := range cells {
-		if !c.IsBlock {
-			signals += fmt.Sprintf(", cell_%d_%d: %q", c.X, c.Y, c.Char)
-		}
-	}
-	return "{" + signals + "}"
-}
-
-templ PuzzleUI(puzzle *db.Puzzle, cells []app.AnnotatedCell, clues []app.Clue, mode string, editingClueID string, clueText string) {
-	<div 
-		class="puzzle-layout" 
-		id="puzzle-ui"
-		data-signals={ getGridSignals(cells, editingClueID, clueText, mode) }
-	>
-		@Grid(puzzle, cells, mode)
+templ PuzzleUI(puzzle *db.Puzzle, cells []app.AnnotatedCell, clues []app.Clue, mode string, editingClueID string, focusedCell string) {
+	<div class="puzzle-layout" id="puzzle-ui">
+		<div 
+			class="stage" 
+			id="puzzle-stage"
+			data-on:mousedown="$_isDragging = true; $_isClick = true"
+			data-on:mouseup="$_isDragging = false"
+			data-on:mouseleave="$_isDragging = false"
+			data-on:mousemove="if ($_isDragging) { $_isClick = false; $_panX += evt.movementX; $_panY += evt.movementY }"
+		>
+			<div 
+				class="grid-layer"
+				id="grid-layer"
+				data-style="{ '--zoom': Math.pow(10, $_zoomLog / 100), '--pan-x': $_panX, '--pan-y': $_panY }"
+			>
+				<div 
+					id="crossword-grid"
+					class="crossword-grid" 
+					style={ fmt.Sprintf("--col-count: %d;", puzzle.Width) }
+				>
+					for _, cell := range cells {
+						@Cell(cell, puzzle.ID, mode, focusedCell)
+					}
+				</div>
+			</div>
+		</div>
+		
 		@ClueSidebar(puzzle, clues, mode, editingClueID)
 	</div>
 }
 
-templ Grid(puzzle *db.Puzzle, cells []app.AnnotatedCell, mode string) {
+templ Cell(cell app.AnnotatedCell, puzzleID string, mode string, focusedCell string) {
+	if mode == "edit" {
+		@CellEdit(cell, puzzleID)
+	} else {
+		@CellSolve(cell, puzzleID, focusedCell)
+	}
+}
+
+templ CellSolve(cell app.AnnotatedCell, puzzleID string, focusedCell string) {
+	{{ isFocused := focusedCell == fmt.Sprintf("%d,%d", cell.X, cell.Y) }}
 	<div 
-		id="crossword-grid"
-		class="crossword-grid" 
-		style={ fmt.Sprintf("grid-template-columns: repeat(%d, 1fr);", puzzle.Width) }
+		id={ fmt.Sprintf("cell-%d-%d", cell.X, cell.Y) }
+		class={ "cell", templ.KV("block", cell.IsBlock), templ.KV("cell-active", isFocused) }
+		if !cell.IsBlock {
+			data-on:click={ fmt.Sprintf("if($_isClick){ @post('/puzzles/%s/cells/%d/%d/focus') }", puzzleID, cell.X, cell.Y) }
+		}
 	>
-		for _, cell := range cells {
-			@Cell(cell, mode)
+		if !cell.IsBlock {
+			if cell.Number > 0 {
+				<span class="cell-num">{ fmt.Sprint(cell.Number) }</span>
+			}
+			
+			if isFocused {
+				<input 
+					id={ fmt.Sprintf("cell-input-el-%d-%d", cell.X, cell.Y) }
+					type="text" 
+					class="cell-input" 
+					data-signals={ fmt.Sprintf("{cellValue: %q}", cell.Char) }
+					data-bind="cellValue"
+					data-init="el.focus(); el.select()"
+					data-on:input={ fmt.Sprintf("@post('/puzzles/%s/cells/%d/%d/update')", puzzleID, cell.X, cell.Y) }
+				/>
+			} else {
+				<span class="cell-text">{ cell.Char }</span>
+			}
 		}
 	</div>
 }
 
-templ Cell(cell app.AnnotatedCell, mode string) {
-	{{ sigName := fmt.Sprintf("cell_%d_%d", cell.X, cell.Y) }}
-	<div 
-		id={ fmt.Sprintf("cell-%d-%d", cell.X, cell.Y) }
+templ CellEdit(cell app.AnnotatedCell, puzzleID string) {
+	<div
 		class={ "cell", templ.KV("block", cell.IsBlock) }
-		data-class={ fmt.Sprintf("{'focused': $focusedX == %d && $focusedY == %d}", cell.X, cell.Y) }
+		data-on:click={ fmt.Sprintf("if($_isClick){ @post('/puzzles/%s/cells/%d/%d/set-block/%t') }", puzzleID, cell.X, cell.Y, !cell.IsBlock) }
 	>
-		if !cell.IsBlock {
-			if cell.Number > 0 {
-				<span class="cell-number">{ fmt.Sprint(cell.Number) }</span>
-			}
-			
-			<input 
-				id={ fmt.Sprintf("cell-input-%d-%d", cell.X, cell.Y) }
-				type="text" 
-				class="cell-input" 
-				value={ cell.Char }
-				data-bind={ sigName }
-				if mode == "edit" {
-					readonly
-					data-on:click={ fmt.Sprintf("@post('/puzzles/%s/cells/%d/%d/toggle-block')", cell.PuzzleID, cell.X, cell.Y) }
-				} else {
-					data-on:click={ fmt.Sprintf("$focusedX = %d; $focusedY = %d; $cellValue = %s; el.select()", cell.X, cell.Y, "$"+sigName) }
-					data-on:input={ fmt.Sprintf("$cellValue = el.value.slice(-1); el.value = $cellValue; %s = $cellValue; @post('/puzzles/%s/cells/%d/%d/update')", "$"+sigName, cell.PuzzleID, cell.X, cell.Y) }
-				}
-			/>
-		} else {
-			if mode == "edit" {
-				<div 
-					style="width:100%; height:100%;" 
-					data-on:click={ fmt.Sprintf("@post('/puzzles/%s/cells/%d/%d/toggle-block')", cell.PuzzleID, cell.X, cell.Y) }
-				></div>
-			}
+		if !cell.IsBlock && cell.Number > 0 {
+			<span class="cell-num">{ fmt.Sprint(cell.Number) }</span>
 		}
 	</div>
 }
 
 templ ClueSidebar(puzzle *db.Puzzle, clues []app.Clue, mode string, editingClueID string) {
-	<div class="clue-sidebar stack" id="clue-sidebar">
-		<section class="card stack">
-			<h3>Across</h3>
-			<ul class="list-none stack">
-				for _, clue := range clues {
-					if clue.Direction == app.DirectionAcross {
-						{{ clueID := fmt.Sprintf("%d-%s", clue.Number, clue.Direction) }}
-						@ClueItem(puzzle.ID, clue, mode, clueID == editingClueID)
+	<aside 
+		class="clue-sidebar" 
+		id="clue-sidebar"
+		data-class="{'sidebar-closed': !$_sidebarOpen}"
+	>
+		<button 
+			class="sidebar-toggle"
+			data-on:click="$_sidebarOpen = !$_sidebarOpen"
+			title="Toggle Sidebar"
+		>
+			<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-class="{'rotate-180': !$_sidebarOpen}" style="transition: transform 0.6s"><polyline points="9 18 15 12 9 6"></polyline></svg>
+		</button>
+		<div class="clue-sidebar-content stack">
+			<section class="card stack">
+				<h3>Across</h3>
+				<ul class="list-none stack">
+					for _, clue := range clues {
+						if clue.Direction == app.DirectionAcross {
+							@ClueItem(puzzle.ID, clue, mode, editingClueID)
+						}
 					}
-				}
-			</ul>
-		</section>
-		<section class="card stack">
-			<h3>Down</h3>
-			<ul class="list-none stack">
-				for _, clue := range clues {
-					if clue.Direction == app.DirectionDown {
-						{{ clueID := fmt.Sprintf("%d-%s", clue.Number, clue.Direction) }}
-						@ClueItem(puzzle.ID, clue, mode, clueID == editingClueID)
+				</ul>
+			</section>
+			<section class="card stack">
+				<h3>Down</h3>
+				<ul class="list-none stack">
+					for _, clue := range clues {
+						if clue.Direction == app.DirectionDown {
+							@ClueItem(puzzle.ID, clue, mode, editingClueID)
+						}
 					}
-				}
-			</ul>
-		</section>
-	</div>
+				</ul>
+			</section>
+		</div>
+	</aside>
 }
 
-templ ClueItem(puzzleID string, clue app.Clue, mode string, isEditing bool) {
+templ ClueItem(puzzleID string, clue app.Clue, mode string, editingClueID string) {
 	{{ clueID := fmt.Sprintf("%d-%s", clue.Number, clue.Direction) }}
-	<li class="clue-item" id={ fmt.Sprintf("clue-li-%s", clueID) }>
-		<strong>{ fmt.Sprint(clue.Number) }.</strong>
-		if mode == "edit" {
-			if isEditing {
-				<input 
-					id={ fmt.Sprintf("clue-input-%s", clueID) }
-					type="text" 
-					class="input" 
-					autofocus
-					data-bind="clueText"
-					data-on:mounted="el.focus(); el.select()"
-					data-on:input.debounce_500ms={ fmt.Sprintf("@post('/puzzles/%s/clues/%d/%s/live')", puzzleID, clue.Number, clue.Direction) }
-					data-on:keydown={ fmt.Sprintf("if (evt.key === 'Enter') { evt.preventDefault(); $_isSaving = true; @post('/puzzles/%s/clues/%d/%s/save') } else if (evt.key === 'Escape') { evt.stopPropagation(); @get('/puzzles/%s/clues/%d/%s/view') }", puzzleID, clue.Number, clue.Direction, puzzleID, clue.Number, clue.Direction) }
-					data-on:blur={ fmt.Sprintf("if (!$_isSaving) @post('/puzzles/%s/clues/%d/%s/save')", puzzleID, clue.Number, clue.Direction) }
-				/>
-			} else {
-				<span 
-					id={ fmt.Sprintf("clue-span-%s", clueID) }
-					data-on:click={ fmt.Sprintf("@get('/puzzles/%s/clues/%d/%s/edit')", puzzleID, clue.Number, clue.Direction) }
-					class="clickable-hint"
-				>
-					if clue.Text != "" {
-						{ clue.Text }
-					} else {
-						<em class="text-muted">Click to add hint...</em>
-					}
-				</span>
-			}
+	<li 
+		class="clue-item" 
+		id={ fmt.Sprintf("clue-li-%s", clueID) }
+	>
+		<strong>{ fmt.Sprint(clue.Number) }</strong>
+		if mode == "edit" && editingClueID == clueID {
+			<input 
+				id={ fmt.Sprintf("clue-input-%s", clueID) }
+				type="text" 
+				class="input" 
+				style="width: 100%; display: block; margin-top: 4px;"
+				data-signals={ fmt.Sprintf("{clueText: %q}", clue.Text) }
+				data-indicator="_isSaving"
+				data-init="el.focus(); el.select()"
+				data-bind="clueText"
+				data-on:keydown.enter={ fmt.Sprintf("if(!$_isSaving) { evt.preventDefault(); @post('/puzzles/%s/clues/%d/%s/save') }", puzzleID, clue.Number, clue.Direction) }
+				data-on:blur={ fmt.Sprintf("if(!$_isSaving) { @post('/puzzles/%s/clues/%d/%s/save') }", puzzleID, clue.Number, clue.Direction) }
+			/>
 		} else {
-			<span>{ clue.Text }</span>
+			<span 
+				id={ fmt.Sprintf("clue-span-%s", clueID) }
+				class="clickable-hint"
+				if mode == "edit" {
+					data-on:click={ fmt.Sprintf("@get('/puzzles/%s/clues/%d/%s/edit')", puzzleID, clue.Number, clue.Direction) }
+				}
+			>
+				if clue.Text != "" {
+					{ clue.Text }
+				} else {
+					if mode == "edit" {
+						<em class="text-muted">Click to add hint...</em>
+					} else {
+						<em class="text-muted">(No hint provided)</em>
+					}
+				}
+			</span>
 		}
 	</li>
 }
 
-templ PuzzlePage(user *db.User, puzzle *db.Puzzle, cells []app.AnnotatedCell, clues []app.Clue, mode string) {
-	<div class="container">
-		<header class="text-center stack">
-			<h1>{ puzzle.Name }</h1>
+templ PuzzlePage(user *db.User, puzzle *db.Puzzle, cells []app.AnnotatedCell, clues []app.Clue, mode string, serverVersion int64, editingClueID string) {
+	{{ streamURL := fmt.Sprintf("/puzzles/%s/stream", puzzle.ID) }}
+	if mode == "edit" {
+		{{ streamURL = fmt.Sprintf("/puzzles/%s/edit/stream", puzzle.ID) }}
+	}
+	<div 
+		id="puzzle-page"
+		style="height: 100%; display: flex; flex-direction: column;"
+		data-signals={ fmt.Sprintf("{mode: '%s', width: %d, height: %d, importedFiles: [], _sidebarOpen: true, _settingsOpen: false, _zoomLog: 0, _panX: 0, _panY: 0, _isDragging: false, _isClick: true, symmetryMode: 'rotational', direction: 'across', cellValue: '', clueText: '', _isSaving: false, serverVersion: %d, clientID: crypto.randomUUID()}", mode, puzzle.Width, puzzle.Height, serverVersion) }
+		data-init={ fmt.Sprintf("@get('%s?clientID=' + $clientID)", streamURL) }
+	>
+		<header>
+			<div style="display: flex; align-items: center; gap: 16px;">
+				<a href="/" class="brand">
+					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+					ShareWord
+				</a>
+				<button 
+					class="btn-icon" 
+					data-on:click="$_sidebarOpen = !$_sidebarOpen"
+					title="Toggle Sidebar"
+				>
+					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+				</button>
+			</div>
+			
+			if mode == "edit" {
+				<div style="display: flex; align-items: center; gap: 8px;">
+					<label class="text-sm font-bold text-slate-500">Size:</label>
+					<input type="number" class="input text-center" style="width: 50px;" data-bind="width" />
+					<span class="text-slate-400">x</span>
+					<input type="number" class="input text-center" style="width: 50px;" data-bind="height" />
+					<button class="btn-sm" data-on:click={ fmt.Sprintf("@post('/puzzles/%s/resize')", puzzle.ID) }>Resize</button>
+					<div style="width: 1px; height: 24px; background: var(--slate-200); margin: 0 8px;"></div>
+					<button class="btn-sm" data-on:click="document.getElementById('import-file').click()">Import</button>
+					<input 
+						type="file" 
+						id="import-file" 
+						class="hidden" 
+						accept=".puz,.ipuz" 
+						data-bind="importedFiles" 
+						data-effect={ fmt.Sprintf("if($importedFiles.length > 0) @post('/puzzles/%s/import')", puzzle.ID) } 
+					/>
+					if puzzle.Width == puzzle.Height {
+						<div style="width: 1px; height: 24px; background: var(--slate-200); margin: 0 8px;"></div>
+						<div style="display: flex; align-items: center; gap: 8px;">
+							<label class="text-sm font-bold text-slate-500">Symmetry:</label>
+							<select class="input" data-bind="symmetryMode">
+								<option value="none">None</option>
+								<option value="horizontal">Horizontal</option>
+								<option value="vertical">Vertical</option>
+								<option value="both">Both</option>
+								<option value="rotational">Rotational</option>
+							</select>
+						</div>
+					}
+				</div>
+			}
+
 			<nav class="tab-bar">
-				<a href={ templ.SafeURL(fmt.Sprintf("/puzzles/%s?mode=edit", puzzle.ID)) } 
+				<a href={ templ.SafeURL(fmt.Sprintf("/puzzles/%s/edit", puzzle.ID)) } 
 				   class={ "tab-link", templ.KV("active", mode == "edit") }>Edit</a>
-				<a href={ templ.SafeURL(fmt.Sprintf("/puzzles/%s?mode=solve", puzzle.ID)) } 
+				<a href={ templ.SafeURL(fmt.Sprintf("/puzzles/%s", puzzle.ID)) } 
 				   class={ "tab-link", templ.KV("active", mode == "solve") }>Solve</a>
 			</nav>
+
+			<div class="peers" style="display: flex; align-items: center; gap: 12px;">
+				<div class="relative">
+					<button 
+						class="btn-icon" 
+						data-on:click="$_settingsOpen = !$_settingsOpen"
+						title="Settings"
+					>
+						<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+					</button>
+					<div 
+						class="dropdown-menu" 
+						data-show="$_settingsOpen"
+						data-on:click.outside="$_settingsOpen = false"
+					>
+						<div class="dropdown-item">
+							<div class="flex items-center gap-4 mb-1">
+								<label class="text-sm font-bold">Zoom</label>
+								<button 
+									class="text-xs text-slate-400 hover:text-primary hover:underline" 
+									data-on:click="$_zoomLog = 0"
+								>
+									Reset
+								</button>
+							</div>
+							<div class="flex items-center gap-2">
+								<input 
+									type="range" 
+									min="-60" 
+									max="60" 
+									step="1" 
+									data-bind="_zoomLog"
+									class="w-full"
+								/>
+								<span class="text-xs w-8" data-text="Math.round(Math.pow(10, $_zoomLog / 100) * 100) + '%'">100%</span>
+							</div>
+						</div>
+						<div class="dropdown-item border-t pt-2">
+							<div class="flex items-center justify-between">
+								<label class="text-sm font-bold">Position</label>
+								<button 
+									class="text-xs text-slate-400 hover:text-primary hover:underline" 
+									data-on:click="$_panX = 0; $_panY = 0"
+								>
+									Recenter
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="peers" id="avatar-container">
+					if user != nil {
+						<div class="avatar" style="background-color: var(--primary);" title={ user.Username }>
+							{ user.Username[:1] }
+							<div class="avatar-dropdown">
+								<a href={ templ.SafeURL(fmt.Sprintf("/users/%s", user.ID)) }>Profile</a>
+								<button data-on:click="@post('/logout')">Logout</button>
+							</div>
+						</div>
+					} else {
+						<div class="avatar" style="background-color: var(--slate-400);">?</div>
+					}
+				</div>
+			</div>
 		</header>
 		
-		@PuzzleUI(puzzle, cells, clues, mode, "", "")
+		<main id="puzzle-ui-container" style="flex: 1; display: flex; flex-direction: column;">
+			@PuzzleUI(puzzle, cells, clues, mode, editingClueID, "")
+		</main>
 	</div>
 }

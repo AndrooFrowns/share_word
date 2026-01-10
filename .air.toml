@@ -1,0 +1,26 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  bin = "./shareword"
+  cmd = "just generate && go build -o ./shareword cmd/server/main.go"
+  delay = 1000
+  exclude_dir = ["assets", "tmp", "vendor", "node_modules", ".jj", ".git", "internal/db"]
+  exclude_regex = ["_templ.go"]
+  exclude_unchanged = false
+  follow_symlink = false
+  full_bin = ""
+  include_ext = ["go", "templ", "sql", "css", "js"]
+  # We watch 'sql' files in the root or other dirs, 
+  # but ignore the generated 'internal/db' go files.
+  include_dir = ["cmd", "internal", "sql"]
+  kill_delay = "0s"
+  log = "build-errors.log"
+  send_interrupt = false
+  stop_on_error = true
+
+[log]
+  time = false
+
+[misc]
+  clean_on_exit = false

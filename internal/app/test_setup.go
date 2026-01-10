@@ -28,5 +28,11 @@ func SetupTestService(t *testing.T) (*Service, *db.Queries, *sql.DB) {
 
 	queries := db.New(dbConn)
 	service := NewService(queries, dbConn)
+
+	t.Cleanup(func() {
+		service.Shutdown()
+		dbConn.Close()
+	})
+
 	return service, queries, dbConn
 }

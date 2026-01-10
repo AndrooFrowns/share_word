@@ -7,7 +7,7 @@ import (
 
 func (s *Service) FollowUser(ctx context.Context, followerID, followedID string) error {
 	if followerID == followedID {
-		return context.Canceled 
+		return context.Canceled
 	}
 	return s.Queries.FollowUser(ctx, db.FollowUserParams{
 		FollowerID: followerID,

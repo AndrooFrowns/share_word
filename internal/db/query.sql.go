@@ -74,6 +74,39 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
+const deleteAllCells = `-- name: DeleteAllCells :exec
+DELETE FROM cells WHERE puzzle_id = ?
+`
+
+func (q *Queries) DeleteAllCells(ctx context.Context, puzzleID string) error {
+	_, err := q.db.ExecContext(ctx, deleteAllCells, puzzleID)
+	return err
+}
+
+const deleteAllClues = `-- name: DeleteAllClues :exec
+DELETE FROM clues WHERE puzzle_id = ?
+`
+
+func (q *Queries) DeleteAllClues(ctx context.Context, puzzleID string) error {
+	_, err := q.db.ExecContext(ctx, deleteAllClues, puzzleID)
+	return err
+}
+
+const deleteCellsOutside = `-- name: DeleteCellsOutside :exec
+DELETE FROM cells WHERE puzzle_id = ? AND (x >= ? OR y >= ?)
+`
+
+type DeleteCellsOutsideParams struct {
+	PuzzleID string
+	X        int64
+	Y        int64
+}
+
+func (q *Queries) DeleteCellsOutside(ctx context.Context, arg DeleteCellsOutsideParams) error {
+	_, err := q.db.ExecContext(ctx, deleteCellsOutside, arg.PuzzleID, arg.X, arg.Y)
+	return err
+}
+
 const followUser = `-- name: FollowUser :exec
 INSERT INTO follows (follower_id, followed_id)
 VALUES (?, ?)
@@ -90,7 +123,7 @@ func (q *Queries) FollowUser(ctx context.Context, arg FollowUserParams) error {
 }
 
 const getCells = `-- name: GetCells :many
-SELECT puzzle_id, x, y, char, is_block, is_pencil FROM cells WHERE puzzle_id = ? ORDER BY y, x
+SELECT puzzle_id, x, y, char, is_block, is_pencil, solution FROM cells WHERE puzzle_id = ? ORDER BY y, x
 `
 
 func (q *Queries) GetCells(ctx context.Context, puzzleID string) ([]Cell, error) {
@@ -109,6 +142,7 @@ func (q *Queries) GetCells(ctx context.Context, puzzleID string) ([]Cell, error)
 			&i.Char,
 			&i.IsBlock,
 			&i.IsPencil,
+			&i.Solution,
 		); err != nil {
 			return nil, err
 		}
@@ -393,6 +427,39 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 	return i, err
 }
 
+const importCell = `-- name: ImportCell :exec
+INSERT INTO cells (puzzle_id, x, y, char, is_block, is_pencil, solution)
+VALUES (?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(puzzle_id, x, y) DO UPDATE SET
+    char = excluded.char,
+    solution = excluded.solution,
+    is_block = excluded.is_block,
+    is_pencil = excluded.is_pencil
+`
+
+type ImportCellParams struct {
+	PuzzleID string
+	X        int64
+	Y        int64
+	Char     string
+	IsBlock  bool
+	IsPencil bool
+	Solution string
+}
+
+func (q *Queries) ImportCell(ctx context.Context, arg ImportCellParams) error {
+	_, err := q.db.ExecContext(ctx, importCell,
+		arg.PuzzleID,
+		arg.X,
+		arg.Y,
+		arg.Char,
+		arg.IsBlock,
+		arg.IsPencil,
+		arg.Solution,
+	)
+	return err
+}
+
 const isFollowing = `-- name: IsFollowing :one
 SELECT EXISTS (
     SELECT 1 FROM follows
@@ -412,6 +479,23 @@ func (q *Queries) IsFollowing(ctx context.Context, arg IsFollowingParams) (int64
 	return column_1, err
 }
 
+const toggleBlock = `-- name: ToggleBlock :exec
+UPDATE cells 
+SET is_block = NOT is_block, char = '' 
+WHERE puzzle_id = ? AND x = ? AND y = ?
+`
+
+type ToggleBlockParams struct {
+	PuzzleID string
+	X        int64
+	Y        int64
+}
+
+func (q *Queries) ToggleBlock(ctx context.Context, arg ToggleBlockParams) error {
+	_, err := q.db.ExecContext(ctx, toggleBlock, arg.PuzzleID, arg.X, arg.Y)
+	return err
+}
+
 const unfollowUser = `-- name: UnfollowUser :exec
 DELETE FROM follows
 WHERE follower_id = ? AND followed_id = ?
@@ -428,8 +512,8 @@ func (q *Queries) UnfollowUser(ctx context.Context, arg UnfollowUserParams) erro
 }
 
 const updateCell = `-- name: UpdateCell :exec
-INSERT INTO cells (puzzle_id, x, y, char, is_block, is_pencil)
-VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO cells (puzzle_id, x, y, char, is_block, is_pencil, solution)
+VALUES (?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(puzzle_id, x, y) DO UPDATE SET
     char = excluded.char,
     is_block = excluded.is_block,
@@ -443,6 +527,7 @@ type UpdateCellParams struct {
 	Char     string
 	IsBlock  bool
 	IsPencil bool
+	Solution string
 }
 
 func (q *Queries) UpdateCell(ctx context.Context, arg UpdateCellParams) error {
@@ -453,7 +538,23 @@ func (q *Queries) UpdateCell(ctx context.Context, arg UpdateCellParams) error {
 		arg.Char,
 		arg.IsBlock,
 		arg.IsPencil,
+		arg.Solution,
 	)
+	return err
+}
+
+const updatePuzzleDimensions = `-- name: UpdatePuzzleDimensions :exec
+UPDATE puzzles SET width = ?, height = ? WHERE id = ?
+`
+
+type UpdatePuzzleDimensionsParams struct {
+	Width  int64
+	Height int64
+	ID     string
+}
+
+func (q *Queries) UpdatePuzzleDimensions(ctx context.Context, arg UpdatePuzzleDimensionsParams) error {
+	_, err := q.db.ExecContext(ctx, updatePuzzleDimensions, arg.Width, arg.Height, arg.ID)
 	return err
 }
 

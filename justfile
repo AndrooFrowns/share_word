@@ -33,6 +33,10 @@ build: generate
 run: generate
     go run cmd/server/main.go
 
+# Watch for changes and hot-reload the server
+watch-run:
+    HOT_RELOAD=true air -c .air.toml
+
 # Seed the database with test users
 seed:
     go run cmd/seed/main.go
