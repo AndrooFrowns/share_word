@@ -1,6 +1,6 @@
 /* --- GLOBAL LAYOUT --- */
 body {
-    height: 100vh;
+    height: 100dvh; /* Dynamic viewport height handles mobile keyboards better */
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -9,7 +9,9 @@ body {
 
 main {
     flex: 1;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 .puzzle-card-item:hover {
@@ -416,7 +418,7 @@ header {
 
 /* --- FOCUS BAR --- */
 .focus-bar {
-    position: fixed;
+    position: sticky;
     bottom: 0;
     left: 0;
     width: 100%;
