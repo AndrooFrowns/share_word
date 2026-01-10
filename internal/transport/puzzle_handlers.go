@@ -216,6 +216,7 @@ func (s *Server) handleFocusCell(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.Service.FocusedCells.Store(key, coord)
+	log.Printf("Focus Stored: %s for key %s", coord, key)
 	s.Service.BroadcastUpdate(puzzleID, false)
 	w.WriteHeader(http.StatusOK)
 }
@@ -419,9 +420,12 @@ func (s *Server) handlePuzzleInput(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if focusedCell == "" {
+		log.Printf("Input Rejected: No focused cell for key %s", key)
 		w.WriteHeader(http.StatusOK)
 		return
 	}
+
+	log.Printf("Input Received: %s at %s (key: %s)", payload.Key, focusedCell, key)
 
 	var x, y int64
 	fmt.Sscanf(focusedCell, "%d,%d", &x, &y)

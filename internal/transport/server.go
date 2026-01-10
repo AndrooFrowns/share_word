@@ -126,7 +126,11 @@ func (s *Server) routes() {
 func (s *Server) rateLimit(limit rate.Limit, burst int) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ip := r.Header.Get("X-Forwarded-For")
+			// Get IP (handles Cloudflare and Caddy proxying)
+			ip := r.Header.Get("CF-Connecting-IP")
+			if ip == "" {
+				ip = r.Header.Get("X-Forwarded-For")
+			}
 			if ip == "" {
 				ip = r.RemoteAddr
 			}
@@ -134,6 +138,7 @@ func (s *Server) rateLimit(limit rate.Limit, burst int) func(http.Handler) http.
 			limiter, _ := s.limiters.LoadOrStore(ip, rate.NewLimiter(limit, burst))
 
 			if !limiter.(*rate.Limiter).Allow() {
+				log.Printf("Rate limit exceeded for IP: %s", ip)
 				http.Error(w, "Too many requests", http.StatusTooManyRequests)
 				return
 			}
