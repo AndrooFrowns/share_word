@@ -25,19 +25,24 @@ FROM alpine:latest
 
 WORKDIR /app
 
-# Install CA certificates for secure outgoing connections (if needed)
-RUN apk add --no-cache ca-certificates tzdata
+# Install CA certificates and create a non-root user
+RUN apk add --no-cache ca-certificates tzdata && \
+    addgroup -S appgroup && adduser -S appuser -G appgroup
 
 # Copy binary from the builder stage
 COPY --from=builder /app/shareword .
+
+# Set ownership to the non-root user
+RUN chown -R appuser:appgroup /app && \
+    mkdir /data && chown -R appuser:appgroup /data
+
+# Switch to the non-root user
+USER appuser
 
 # Production defaults
 ENV PORT=8080
 ENV DB_PATH=/data/shareword.db
 ENV ENV=production
-
-# Create data directory for persistent SQLite storage
-RUN mkdir /data
 
 # The app listens on this port
 EXPOSE 8080
