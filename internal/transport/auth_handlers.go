@@ -20,14 +20,14 @@ func (s *Server) handleSignups(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if payload.Password != payload.ConfirmPassword {
-		sse := datastar.NewSSE(w, r)
+		sse := datastar.NewSSE(w, r, datastar.WithCompression())
 		sse.PatchElementTempl(components.Signup("Passwords do not match"))
 		return
 	}
 
 	user, err := s.Service.RegisterUser(r.Context(), payload.Username, payload.Password)
 	if err != nil {
-		sse := datastar.NewSSE(w, r)
+		sse := datastar.NewSSE(w, r, datastar.WithCompression())
 		sse.PatchElementTempl(components.Signup(err.Error()))
 		return
 	}
@@ -41,7 +41,7 @@ func (s *Server) handleSignups(w http.ResponseWriter, r *http.Request) {
 
 	// Ensure headers are written before SSE starts
 	w.WriteHeader(http.StatusOK)
-	sse := datastar.NewSSE(w, r)
+	sse := datastar.NewSSE(w, r, datastar.WithCompression())
 	sse.Redirect("/")
 }
 
@@ -58,7 +58,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	user, err := s.Service.AuthenticateUser(r.Context(), payload.Username, payload.Password)
 	if err != nil {
-		sse := datastar.NewSSE(w, r)
+		sse := datastar.NewSSE(w, r, datastar.WithCompression())
 		sse.PatchElementTempl(components.Login("Invalid username or password"))
 		return
 	}
@@ -72,11 +72,11 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	// Ensure headers are written before SSE starts
 	w.WriteHeader(http.StatusOK)
-	sse := datastar.NewSSE(w, r)
+	sse := datastar.NewSSE(w, r, datastar.WithCompression())
 	sse.Redirect("/")
 }
 
 func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	s.SessionManager.Destroy(r.Context())
-	datastar.NewSSE(w, r).Redirect("/login")
+	datastar.NewSSE(w, r, datastar.WithCompression()).Redirect("/login")
 }

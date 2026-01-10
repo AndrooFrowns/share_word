@@ -3,6 +3,7 @@ module share_word
 go 1.25.5
 
 require (
+	github.com/CAFxX/httpcompression v0.0.9
 	github.com/alexedwards/scs/sqlite3store v0.0.0-20251002162104-209de6e426de
 	github.com/alexedwards/scs/v2 v2.9.0
 	github.com/google/uuid v1.6.0
@@ -16,7 +17,6 @@ require (
 )
 
 require (
-	github.com/CAFxX/httpcompression v0.0.9 // indirect
 	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/antithesishq/antithesis-sdk-go v0.5.0-default-no-op // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect

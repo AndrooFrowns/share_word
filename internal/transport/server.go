@@ -9,6 +9,9 @@ import (
 	"share_word/internal/web/static"
 	"time"
 
+	"github.com/CAFxX/httpcompression"
+	"github.com/CAFxX/httpcompression/contrib/andybalholm/brotli"
+	"github.com/CAFxX/httpcompression/contrib/compress/gzip"
 	"github.com/alexedwards/scs/sqlite3store"
 	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
@@ -47,6 +50,15 @@ func (s *Server) routes() {
 			next.ServeHTTP(w, r)
 		})
 	})
+
+	// Add Brotli/Gzip compression middleware
+	brotliComp, _ := brotli.New(brotli.Options{})
+	gzipComp, _ := gzip.New(gzip.Options{})
+	compress, _ := httpcompression.Adapter(
+		httpcompression.Compressor(brotli.Encoding, 1, brotliComp),
+		httpcompression.Compressor(gzip.Encoding, 0, gzipComp),
+	)
+	s.Router.Use(compress)
 
 	// Use embedded static assets
 	staticFS, _ := fs.Sub(static.Assets, ".")

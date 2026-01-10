@@ -547,7 +547,7 @@ func (s *Server) handlePuzzleStream(w http.ResponseWriter, r *http.Request, mode
 	}
 	defer sub.Unsubscribe()
 
-	sse := datastar.NewSSE(w, r)
+	sse := datastar.NewSSE(w, r, datastar.WithCompression())
 
 	// Push initial state immediately
 	s.pushPuzzleState(r.Context(), sse, puzzleID, mode, clientID)
@@ -663,7 +663,7 @@ func (s *Server) handleCreatePuzzle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	datastar.NewSSE(w, r).Redirect(fmt.Sprintf("/puzzles/%s", p.ID))
+	datastar.NewSSE(w, r, datastar.WithCompression()).Redirect(fmt.Sprintf("/puzzles/%s", p.ID))
 }
 
 func (s *Server) handleResizePuzzle(w http.ResponseWriter, r *http.Request) {
@@ -741,7 +741,7 @@ func (s *Server) handleImportPuzzle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Reset the importedFiles signal on the client so they can import again if needed
-	datastar.NewSSE(w, r).PatchSignals([]byte(`{"importedFiles": []}`))
+	datastar.NewSSE(w, r, datastar.WithCompression()).PatchSignals([]byte(`{"importedFiles": []}`))
 
 	s.Service.BroadcastUpdate(puzzleID, true)
 }
