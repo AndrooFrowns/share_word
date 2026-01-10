@@ -13,7 +13,7 @@ templ PuzzleUI(p db.GetPuzzleRow, cells []app.AnnotatedCell, clues []app.Clue, m
 			<input 
 				id="puzzle-input"
 				type="text"
-				style="position: absolute; opacity: 0; pointer-events: none;"
+				style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0; font-size: 16px;"
 				data-on:keydown="if(evt.key === 'Backspace' || evt.key === ' ' || evt.key.startsWith('Arrow') || evt.key === 'Tab') { evt.preventDefault(); $lastKey = evt.key; $isShift = evt.shiftKey; $isCtrl = evt.ctrlKey; @post('/puzzles/' + $pID + '/input') }"
 				data-on:input="$lastKey = evt.target.value.slice(-1); evt.target.value = ''; @post('/puzzles/' + $pID + '/input')"
 				data-init="el.focus()"
