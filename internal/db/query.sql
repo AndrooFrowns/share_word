@@ -45,6 +45,9 @@ RETURNING *;
 -- name: UpdatePuzzleDimensions :exec
 UPDATE puzzles SET width = ?, height = ? WHERE id = ?;
 
+-- name: UpdatePuzzleUpdatedAt :exec
+UPDATE puzzles SET updated_at = CURRENT_TIMESTAMP WHERE id = ?;
+
 -- name: GetClues :many
 SELECT * FROM clues WHERE puzzle_id = ?;
 
@@ -58,7 +61,9 @@ ON CONFLICT(puzzle_id, number, direction) DO UPDATE SET
 DELETE FROM clues WHERE puzzle_id = ?;
 
 -- name: GetPuzzle :one
-SELECT * FROM puzzles WHERE id = ? LIMIT 1;
+SELECT p.*, u.username as owner_username FROM puzzles p
+JOIN users u ON u.id = p.owner_id
+WHERE p.id = ? LIMIT 1;
 
 -- name: UpdateCell :exec
 INSERT INTO cells (puzzle_id, x, y, char, is_block, is_pencil, solution)
@@ -92,11 +97,20 @@ DELETE FROM cells WHERE puzzle_id = ? AND (x >= ? OR y >= ?);
 DELETE FROM cells WHERE puzzle_id = ?;
 
 -- name: GetPuzzlesByOwner :many
-SELECT * FROM puzzles WHERE owner_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?;
+SELECT p.*, u.username as owner_username FROM puzzles p
+JOIN users u ON u.id = p.owner_id
+WHERE p.owner_id = ? ORDER BY p.created_at DESC LIMIT ? OFFSET ?;
 
 -- name: GetPuzzlesFromFollowing :many
 SELECT p.* FROM puzzles p
 JOIN follows f ON f.followed_id = p.owner_id
+WHERE f.follower_id = ?
+ORDER BY p.created_at DESC LIMIT ? OFFSET ?;
+
+-- name: GetPuzzlesFromFollowingWithUsername :many
+SELECT p.*, u.username as owner_username FROM puzzles p
+JOIN follows f ON f.followed_id = p.owner_id
+JOIN users u ON u.id = p.owner_id
 WHERE f.follower_id = ?
 ORDER BY p.created_at DESC LIMIT ? OFFSET ?;
 

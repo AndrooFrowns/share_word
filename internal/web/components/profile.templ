@@ -5,59 +5,83 @@ import (
 	"fmt"
 )
 
-templ Profile(targetUser *db.User, isFollowing bool, followers []db.User, following []db.User, limit, offset int64, puzzles []db.Puzzle) {
+templ Profile(currentUser *db.User, targetUser *db.User, isFollowing bool, followers []db.User, following []db.User, limit, offset int64, puzzles []db.GetPuzzlesByOwnerRow) {
 	<div id="profile-page" class="container stack">
-		<section class="card text-center stack">
-			<header>
-				<h1>{ targetUser.Username }</h1>
-			</header>
+		<section class="card flex items-center justify-between">
+			<div class="flex items-center gap-4">
+				<div class="avatar" style="width: 64px; height: 64px; font-size: 1.5rem; background-color: var(--primary);">
+					{ targetUser.Username[:1] }
+				</div>
+				<div>
+					<h1 class="text-2xl font-bold">{ targetUser.Username }</h1>
+					<p class="text-slate-500">{ fmt.Sprintf("%d followers · %d following", len(followers), len(following)) }</p>
+				</div>
+			</div>
 			<div id="follow-actions">
-				if isFollowing {
-					<button class="btn-primary" data-on:click={ fmt.Sprintf("@post('/users/%s/unfollow')", targetUser.ID) }>
-						Unfollow
-					</button>
-				} else {
-					<button class="btn-primary" data-on:click={ fmt.Sprintf("@post('/users/%s/follow')", targetUser.ID) }>
-						Follow
-					</button>
+				if currentUser != nil && currentUser.ID != targetUser.ID {
+					if isFollowing {
+						<button class="btn-sm" data-on:click={ fmt.Sprintf("@post('/users/%s/unfollow')", targetUser.ID) }>
+							Unfollow
+						</button>
+					} else {
+						<button class="btn-primary" data-on:click={ fmt.Sprintf("@post('/users/%s/follow')", targetUser.ID) }>
+							Follow
+						</button>
+					}
 				}
 			</div>
 		</section>
 
 		<section class="stack">
-			<h2>Puzzles by { targetUser.Username }</h2>
+			<h2 class="text-xl font-bold">Puzzles by { targetUser.Username }</h2>
 			if len(puzzles) == 0 {
-				<p class="text-center">No puzzles created yet.</p>
-			} else {
-				<div class="grid-2">
-					for _, p := range puzzles {
-						<div class="card">
-							<h3>{ p.Name }</h3>
-							<p>{ fmt.Sprintf("%dx%d", p.Width, p.Height) }</p>
-							<a href={ templ.SafeURL(fmt.Sprintf("/puzzles/%s", p.ID)) } class="btn-link">Open Grid</a>
-						</div>
-					}
+				<div class="card text-center text-slate-500">
+					<p>No puzzles created yet.</p>
 				</div>
+			} else {
+				@PuzzleList(puzzles)
 			}
 		</section>
 
 		<div class="grid-2">
 			<section class="card stack">
-				<h3>Following ({ fmt.Sprint(len(following)) })</h3>
-				<ul class="list-none stack">
-					for _, user := range following {
-						<li><a href={ templ.SafeURL(fmt.Sprintf("/users/%s", user.ID)) }>{ user.Username }</a></li>
-					}
-				</ul>
+				<h3 class="font-bold">Following</h3>
+				if len(following) == 0 {
+					<p class="text-sm text-slate-400">Not following anyone yet.</p>
+				} else {
+					<ul class="list-none stack">
+						for _, user := range following {
+							<li>
+								<a href={ templ.SafeURL(fmt.Sprintf("/users/%s", user.ID)) } class="flex items-center gap-2 btn-link">
+									<div class="avatar" style="width: 24px; height: 24px; font-size: 0.7rem; background-color: var(--slate-400);">
+										{ user.Username[:1] }
+									</div>
+									{ user.Username }
+								</a>
+							</li>
+						}
+					</ul>
+				}
 				@Pagination(targetUser.ID, limit, offset, int64(len(following)))
 			</section>
 			<section class="card stack">
-				<h3>Followers ({ fmt.Sprint(len(followers)) })</h3>
-				<ul class="list-none stack">
-					for _, user := range followers {
-						<li><a href={ templ.SafeURL(fmt.Sprintf("/users/%s", user.ID)) }>{ user.Username }</a></li>
-					}
-				</ul>
+				<h3 class="font-bold">Followers</h3>
+				if len(followers) == 0 {
+					<p class="text-sm text-slate-400">No followers yet.</p>
+				} else {
+					<ul class="list-none stack">
+						for _, user := range followers {
+							<li>
+								<a href={ templ.SafeURL(fmt.Sprintf("/users/%s", user.ID)) } class="flex items-center gap-2 btn-link">
+									<div class="avatar" style="width: 24px; height: 24px; font-size: 0.7rem; background-color: var(--slate-400);">
+										{ user.Username[:1] }
+									</div>
+									{ user.Username }
+								</a>
+							</li>
+						}
+					</ul>
+				}
 				@Pagination(targetUser.ID, limit, offset, int64(len(followers)))
 			</section>
 		</div>

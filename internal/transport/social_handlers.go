@@ -44,13 +44,9 @@ func (s *Server) handleViewProfile(w http.ResponseWriter, r *http.Request) {
 		isFollowing = val > 0
 	}
 
-	puzzles, _ := s.Service.Queries.GetPuzzlesByOwner(r.Context(), db.GetPuzzlesByOwnerParams{
-		OwnerID: targetUser.ID,
-		Limit:   10,
-		Offset:  0,
-	})
+	puzzles, _ := s.Service.Queries.GetPuzzlesByOwner(r.Context(), db.GetPuzzlesByOwnerParams{OwnerID: targetUserID, Limit: 50, Offset: 0})
 
-	components.Layout(components.Profile(targetUser, isFollowing, followers, following, limit, offset, puzzles), currentUser).Render(r.Context(), w)
+	components.Layout(components.Profile(currentUser, targetUser, isFollowing, followers, following, limit, offset, puzzles), currentUser, true).Render(r.Context(), w)
 }
 
 func (s *Server) handleFollow(w http.ResponseWriter, r *http.Request) {

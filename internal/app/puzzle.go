@@ -31,14 +31,19 @@ type Clue struct {
 	Answer    string // The derived answer from the grid
 }
 
-func (s *Service) GetFullClues(ctx context.Context, p *db.Puzzle, cells []db.Cell) ([]Clue, error) {
-	dbClues, err := s.Queries.GetClues(ctx, p.ID)
+func (s *Service) GetFullClues(ctx context.Context, pID string, cells []db.Cell) ([]Clue, error) {
+	dbClues, err := s.Queries.GetClues(ctx, pID)
 	if err != nil {
 		return nil, err
 	}
 	clueMap := make(map[string]string)
 	for _, c := range dbClues {
 		clueMap[fmt.Sprintf("%d-%s", c.Number, c.Direction)] = c.Text
+	}
+
+	p, err := s.Queries.GetPuzzle(ctx, pID)
+	if err != nil {
+		return nil, err
 	}
 
 	derived := s.DeriveClues(int(p.Width), int(p.Height), cells)

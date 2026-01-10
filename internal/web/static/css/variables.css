@@ -14,6 +14,7 @@
     --brand: var(--primary);
     --brand-hover: #2563eb;
     --white: #ffffff;
+    --bg: var(--slate-50);
     --text-main: var(--slate-900);
     --border: var(--slate-200);
     

@@ -18,7 +18,7 @@ func TestClueLogic(t *testing.T) {
 	require.NoError(t, err)
 
 	cells, _ := queries.GetCells(ctx, p.ID)
-	clues, err := svc.GetFullClues(ctx, p, cells)
+	clues, err := svc.GetFullClues(ctx, p.ID, cells)
 	require.NoError(t, err)
 
 	found1A := false
@@ -39,7 +39,7 @@ func TestClueLogic(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	clues, err = svc.GetFullClues(ctx, p, cells)
+	clues, err = svc.GetFullClues(ctx, p.ID, cells)
 	require.NoError(t, err)
 
 	foundUpdated := false
@@ -60,7 +60,7 @@ func TestClueLogic(t *testing.T) {
 	require.NoError(t, err)
 
 	cells, _ = queries.GetCells(ctx, p.ID)
-	clues, err = svc.GetFullClues(ctx, p, cells)
+	clues, err = svc.GetFullClues(ctx, p.ID, cells)
 	require.NoError(t, err)
 
 	foundOrphan := false

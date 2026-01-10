@@ -1,0 +1,80 @@
+package components
+
+import (
+	"share_word/internal/db"
+	"fmt"
+)
+
+templ PuzzleCard(p db.GetPuzzlesByOwnerRow) {
+	<div class="card stack puzzle-card-item" style="transition: all 0.2s; position: relative; border-color: var(--slate-200);">
+		<div class="flex justify-between items-start">
+			<div class="stack" style="gap: 4px;">
+				<a href={ templ.SafeURL(fmt.Sprintf("/puzzles/%s", p.ID)) } class="btn-link" style="font-size: 1.2rem; line-height: 1.2; color: var(--slate-900);">
+					<h3 class="font-bold" style="display: inline;">{ p.Name }</h3>
+				</a>
+				<div class="flex items-center gap-2 text-xs text-slate-400">
+					<span class="font-mono bg-slate-100 px-1 rounded">{ fmt.Sprintf("%dx%d", p.Width, p.Height) }</span>
+					<span>•</span>
+					<span>by <a href={ templ.SafeURL(fmt.Sprintf("/users/%s", p.OwnerID)) } class="hover:underline text-primary font-medium">{ p.OwnerUsername }</a></span>
+				</div>
+			</div>
+		</div>
+		
+		<div class="flex justify-between items-center mt-3 pt-3 border-t" style="border-color: var(--slate-100);">
+			<div class="text-[10px] uppercase tracking-wider text-slate-400 stack" style="gap: 2px;">
+				<span>Created { p.CreatedAt.Format("Jan 02, 2006") }</span>
+				if p.UpdatedAt.Valid {
+					<span class="text-slate-500 font-medium">Last active { p.UpdatedAt.Time.Format("Jan 02, 15:04") }</span>
+				}
+			</div>
+			<a href={ templ.SafeURL(fmt.Sprintf("/puzzles/%s", p.ID)) } class="btn-primary" style="font-size: 0.7rem; padding: 4px 12px; border-radius: 20px;">Open Grid</a>
+		</div>
+	</div>
+}
+
+templ PuzzleCardFromFollowing(p db.GetPuzzlesFromFollowingWithUsernameRow) {
+	<div class="card stack puzzle-card-item" style="transition: all 0.2s; position: relative; border-color: var(--slate-200);">
+		<div class="flex justify-between items-start">
+			<div class="stack" style="gap: 4px;">
+				<a href={ templ.SafeURL(fmt.Sprintf("/puzzles/%s", p.ID)) } class="btn-link" style="font-size: 1.2rem; line-height: 1.2; color: var(--slate-900);">
+					<h3 class="font-bold" style="display: inline;">{ p.Name }</h3>
+				</a>
+				<div class="flex items-center gap-2 text-xs text-slate-400">
+					<span class="font-mono bg-slate-100 px-1 rounded">{ fmt.Sprintf("%dx%d", p.Width, p.Height) }</span>
+					<span>•</span>
+					<span>by <a href={ templ.SafeURL(fmt.Sprintf("/users/%s", p.OwnerID)) } class="hover:underline text-primary font-medium">{ p.OwnerUsername }</a></span>
+				</div>
+			</div>
+		</div>
+		
+		<div class="flex justify-between items-center mt-3 pt-3 border-t" style="border-color: var(--slate-100);">
+			<div class="text-[10px] uppercase tracking-wider text-slate-400 stack" style="gap: 2px;">
+				<span>Created { p.CreatedAt.Format("Jan 02, 2006") }</span>
+				if p.UpdatedAt.Valid {
+					<span class="text-slate-500 font-medium">Last active { p.UpdatedAt.Time.Format("Jan 02, 15:04") }</span>
+				}
+			</div>
+			<a href={ templ.SafeURL(fmt.Sprintf("/puzzles/%s", p.ID)) } class="btn-primary" style="font-size: 0.7rem; padding: 4px 12px; border-radius: 20px;">Join Game</a>
+		</div>
+	</div>
+}
+
+templ PuzzleList(puzzles []db.GetPuzzlesByOwnerRow) {
+	<div class="puzzle-list-group">
+		<div class="grid-2">
+			for _, p := range puzzles {
+				@PuzzleCard(p)
+			}
+		</div>
+	</div>
+}
+
+templ PuzzleListFromFollowing(puzzles []db.GetPuzzlesFromFollowingWithUsernameRow) {
+	<div class="puzzle-list-group">
+		<div class="grid-2">
+			for _, p := range puzzles {
+				@PuzzleCardFromFollowing(p)
+			}
+		</div>
+	</div>
+}

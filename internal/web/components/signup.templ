@@ -1,13 +1,13 @@
 package components
 
 templ Signup(errorMessage string) {
-	<div id="signup-form" class="container" data-signals="{username: '', password: '', confirmPassword: '', _fetching: false}">
-		<section class="card">
-			<h2>Create Account</h2>
+	<div id="signup-form" class="container flex" style="align-items: center; justify-content: center; min-height: 60vh;" data-signals="{username: '', password: '', confirmPassword: '', _fetching: false}">
+		<section class="card stack" style="max-width: 400px; width: 100%;">
+			<h2 class="text-xl font-bold text-center">Create Account</h2>
 			if errorMessage != "" {
 				<div class="alert-error">{ errorMessage }</div>
 			}
-			<form>
+			<form class="stack">
 				<div class="form-group">
 					<label>Username</label>
 					<input
@@ -15,6 +15,7 @@ templ Signup(errorMessage string) {
 						type="text"
 						data-bind:username
 						data-attr:disabled="$_fetching"
+						placeholder="Choose a username"
 					/>
 				</div>
 				<div class="form-group">
@@ -24,6 +25,7 @@ templ Signup(errorMessage string) {
 						type="password"
 						data-bind:password
 						data-attr:disabled="$_fetching"
+						placeholder="Minimum 12 characters"
 					/>
 				</div>
 				<div class="form-group">
@@ -33,11 +35,12 @@ templ Signup(errorMessage string) {
 						type="password"
 						data-bind:confirm-password
 						data-attr:disabled="$_fetching"
+						placeholder="Repeat your password"
 					/>
 				</div>
 				<button
 					type="button"
-					class="btn-primary"
+					class="btn-primary mt-2"
 					data-indicator:_fetching
 					data-attr:disabled="$_fetching"
 					data-on:click="@post('/signup')"
@@ -45,6 +48,7 @@ templ Signup(errorMessage string) {
 					Sign Up
 				</button>
 			</form>
+			<p class="text-sm text-center text-slate-500">Already have an account? <a href="/login" class="btn-link">Log in</a></p>
 		</section>
 	</div>
 }

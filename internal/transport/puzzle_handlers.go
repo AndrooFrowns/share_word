@@ -50,7 +50,7 @@ func (s *Server) viewPuzzle(w http.ResponseWriter, r *http.Request, mode string)
 	}
 
 	annotated := s.Service.CalculateNumbers(int(p.Width), int(p.Height), cells)
-	clues, err := s.Service.GetFullClues(r.Context(), &p, cells)
+	clues, err := s.Service.GetFullClues(r.Context(), p.ID, cells)
 	if err != nil {
 		http.Error(w, "failed to load clues", http.StatusInternalServerError)
 		return
@@ -62,7 +62,7 @@ func (s *Server) viewPuzzle(w http.ResponseWriter, r *http.Request, mode string)
 		currentUser = u
 	}
 
-	components.Layout(components.PuzzlePage(currentUser, &p, annotated, clues, mode, s.Service.StartTime, editingClueID), currentUser).Render(r.Context(), w)
+	components.Layout(components.PuzzlePage(currentUser, p, annotated, clues, mode, s.Service.StartTime, editingClueID), currentUser, false).Render(r.Context(), w)
 }
 
 func (s *Server) handleSetBlock(w http.ResponseWriter, r *http.Request) {
@@ -319,9 +319,9 @@ func (s *Server) pushPuzzleState(ctx context.Context, sse *datastar.ServerSentEv
 	}
 
 	annotated := s.Service.CalculateNumbers(int(p.Width), int(p.Height), cells)
-	clues, _ := s.Service.GetFullClues(ctx, &p, cells)
+	clues, _ := s.Service.GetFullClues(ctx, p.ID, cells)
 
-	sse.PatchElementTempl(components.PuzzleUI(&p, annotated, clues, mode, editingClueID, focusedCell))
+	sse.PatchElementTempl(components.PuzzleUI(p, annotated, clues, mode, editingClueID, focusedCell))
 }
 
 func (s *Server) handleCreatePuzzle(w http.ResponseWriter, r *http.Request) {
@@ -340,6 +340,13 @@ func (s *Server) handleCreatePuzzle(w http.ResponseWriter, r *http.Request) {
 	if err := datastar.ReadSignals(r, &payload); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
+	}
+
+	if payload.Width <= 0 {
+		payload.Width = 15
+	}
+	if payload.Height <= 0 {
+		payload.Height = 15
 	}
 
 	p, err := s.Service.CreatePuzzle(r.Context(), payload.Name, userID, payload.Width, payload.Height)

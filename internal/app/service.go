@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"database/sql"
 
 	"fmt"
@@ -144,6 +145,7 @@ func (s *Service) BroadcastUpdate(puzzleID string, structural bool) {
 
 	log.Printf("Publishing to NATS: %s -> %s", subject, msg)
 
-	_ = s.NC.Publish(subject, []byte(msg))
+	_ = s.Queries.UpdatePuzzleUpdatedAt(context.Background(), puzzleID)
 
+	_ = s.NC.Publish(subject, []byte(msg))
 }

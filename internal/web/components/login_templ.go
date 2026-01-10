@@ -29,7 +29,7 @@ func Login(errorMessage string) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"login-form\" class=\"container\" data-signals=\"{username: '', password: ''}\"><section class=\"card\"><h2>Login</h2>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"login-form\" class=\"container flex\" style=\"align-items: center; justify-content: center; min-height: 60vh;\" data-signals=\"{username: '', password: ''}\"><section class=\"card stack\" style=\"max-width: 400px; width: 100%;\"><h2 class=\"text-xl font-bold text-center\">Login</h2>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -52,7 +52,7 @@ func Login(errorMessage string) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<form><div class=\"form-group\"><label>Username</label> <input class=\"input\" type=\"text\" data-bind:username></div><div class=\"form-group\"><label>Password</label> <input class=\"input\" type=\"password\" data-bind:password></div><button type=\"button\" class=\"btn-primary\" data-on:click=\"@post('/login')\">Sign In</button></form><p>Don't have an account? <a href=\"/signup\">Sign up here</a></p></section></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<form class=\"stack\"><div class=\"form-group\"><label>Username</label> <input class=\"input\" type=\"text\" data-bind:username placeholder=\"Enter your username\"></div><div class=\"form-group\"><label>Password</label> <input class=\"input\" type=\"password\" data-bind:password placeholder=\"Enter your password\"></div><button type=\"button\" class=\"btn-primary mt-2\" data-on:click=\"@post('/login')\">Sign In</button></form><p class=\"text-sm text-center text-slate-500\">Don't have an account? <a href=\"/signup\" class=\"btn-link\">Sign up</a></p></section></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -60,11 +60,11 @@ func (s *Server) routes() {
 
 		r.Get("/", s.handleHome)
 		r.Get("/signup", func(w http.ResponseWriter, r *http.Request) {
-			components.Layout(components.Signup(""), nil).Render(r.Context(), w)
+			components.Layout(components.Signup(""), nil, true).Render(r.Context(), w)
 		})
 		r.Post("/signup", s.handleSignups)
 		r.Get("/login", func(w http.ResponseWriter, r *http.Request) {
-			components.Layout(components.Login(""), nil).Render(r.Context(), w)
+			components.Layout(components.Login(""), nil, true).Render(r.Context(), w)
 		})
 		r.Post("/login", s.handleLogin)
 		r.Post("/logout", s.handleLogout)

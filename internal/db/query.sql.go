@@ -7,13 +7,14 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"time"
 )
 
 const createPuzzle = `-- name: CreatePuzzle :one
 INSERT INTO puzzles (id, owner_id, name, width, height)
 VALUES (?, ?, ?, ?, ?)
-RETURNING id, owner_id, name, width, height, created_at
+RETURNING id, owner_id, name, width, height, created_at, updated_at
 `
 
 type CreatePuzzleParams struct {
@@ -40,6 +41,7 @@ func (q *Queries) CreatePuzzle(ctx context.Context, arg CreatePuzzleParams) (Puz
 		&i.Width,
 		&i.Height,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -274,7 +276,7 @@ func (q *Queries) GetFollowing(ctx context.Context, arg GetFollowingParams) ([]U
 }
 
 const getLastPuzzleByOwner = `-- name: GetLastPuzzleByOwner :one
-SELECT id, owner_id, name, width, height, created_at FROM puzzles
+SELECT id, owner_id, name, width, height, created_at, updated_at FROM puzzles
 WHERE owner_id = ?
 ORDER BY created_at DESC
 LIMIT 1
@@ -290,17 +292,31 @@ func (q *Queries) GetLastPuzzleByOwner(ctx context.Context, ownerID string) (Puz
 		&i.Width,
 		&i.Height,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const getPuzzle = `-- name: GetPuzzle :one
-SELECT id, owner_id, name, width, height, created_at FROM puzzles WHERE id = ? LIMIT 1
+SELECT p.id, p.owner_id, p.name, p.width, p.height, p.created_at, p.updated_at, u.username as owner_username FROM puzzles p
+JOIN users u ON u.id = p.owner_id
+WHERE p.id = ? LIMIT 1
 `
 
-func (q *Queries) GetPuzzle(ctx context.Context, id string) (Puzzle, error) {
+type GetPuzzleRow struct {
+	ID            string
+	OwnerID       string
+	Name          string
+	Width         int64
+	Height        int64
+	CreatedAt     time.Time
+	UpdatedAt     sql.NullTime
+	OwnerUsername string
+}
+
+func (q *Queries) GetPuzzle(ctx context.Context, id string) (GetPuzzleRow, error) {
 	row := q.db.QueryRowContext(ctx, getPuzzle, id)
-	var i Puzzle
+	var i GetPuzzleRow
 	err := row.Scan(
 		&i.ID,
 		&i.OwnerID,
@@ -308,12 +324,16 @@ func (q *Queries) GetPuzzle(ctx context.Context, id string) (Puzzle, error) {
 		&i.Width,
 		&i.Height,
 		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.OwnerUsername,
 	)
 	return i, err
 }
 
 const getPuzzlesByOwner = `-- name: GetPuzzlesByOwner :many
-SELECT id, owner_id, name, width, height, created_at FROM puzzles WHERE owner_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?
+SELECT p.id, p.owner_id, p.name, p.width, p.height, p.created_at, p.updated_at, u.username as owner_username FROM puzzles p
+JOIN users u ON u.id = p.owner_id
+WHERE p.owner_id = ? ORDER BY p.created_at DESC LIMIT ? OFFSET ?
 `
 
 type GetPuzzlesByOwnerParams struct {
@@ -322,15 +342,26 @@ type GetPuzzlesByOwnerParams struct {
 	Offset  int64
 }
 
-func (q *Queries) GetPuzzlesByOwner(ctx context.Context, arg GetPuzzlesByOwnerParams) ([]Puzzle, error) {
+type GetPuzzlesByOwnerRow struct {
+	ID            string
+	OwnerID       string
+	Name          string
+	Width         int64
+	Height        int64
+	CreatedAt     time.Time
+	UpdatedAt     sql.NullTime
+	OwnerUsername string
+}
+
+func (q *Queries) GetPuzzlesByOwner(ctx context.Context, arg GetPuzzlesByOwnerParams) ([]GetPuzzlesByOwnerRow, error) {
 	rows, err := q.db.QueryContext(ctx, getPuzzlesByOwner, arg.OwnerID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Puzzle
+	var items []GetPuzzlesByOwnerRow
 	for rows.Next() {
-		var i Puzzle
+		var i GetPuzzlesByOwnerRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.OwnerID,
@@ -338,6 +369,8 @@ func (q *Queries) GetPuzzlesByOwner(ctx context.Context, arg GetPuzzlesByOwnerPa
 			&i.Width,
 			&i.Height,
 			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.OwnerUsername,
 		); err != nil {
 			return nil, err
 		}
@@ -353,7 +386,7 @@ func (q *Queries) GetPuzzlesByOwner(ctx context.Context, arg GetPuzzlesByOwnerPa
 }
 
 const getPuzzlesFromFollowing = `-- name: GetPuzzlesFromFollowing :many
-SELECT p.id, p.owner_id, p.name, p.width, p.height, p.created_at FROM puzzles p
+SELECT p.id, p.owner_id, p.name, p.width, p.height, p.created_at, p.updated_at FROM puzzles p
 JOIN follows f ON f.followed_id = p.owner_id
 WHERE f.follower_id = ?
 ORDER BY p.created_at DESC LIMIT ? OFFSET ?
@@ -381,6 +414,64 @@ func (q *Queries) GetPuzzlesFromFollowing(ctx context.Context, arg GetPuzzlesFro
 			&i.Width,
 			&i.Height,
 			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getPuzzlesFromFollowingWithUsername = `-- name: GetPuzzlesFromFollowingWithUsername :many
+SELECT p.id, p.owner_id, p.name, p.width, p.height, p.created_at, p.updated_at, u.username as owner_username FROM puzzles p
+JOIN follows f ON f.followed_id = p.owner_id
+JOIN users u ON u.id = p.owner_id
+WHERE f.follower_id = ?
+ORDER BY p.created_at DESC LIMIT ? OFFSET ?
+`
+
+type GetPuzzlesFromFollowingWithUsernameParams struct {
+	FollowerID string
+	Limit      int64
+	Offset     int64
+}
+
+type GetPuzzlesFromFollowingWithUsernameRow struct {
+	ID            string
+	OwnerID       string
+	Name          string
+	Width         int64
+	Height        int64
+	CreatedAt     time.Time
+	UpdatedAt     sql.NullTime
+	OwnerUsername string
+}
+
+func (q *Queries) GetPuzzlesFromFollowingWithUsername(ctx context.Context, arg GetPuzzlesFromFollowingWithUsernameParams) ([]GetPuzzlesFromFollowingWithUsernameRow, error) {
+	rows, err := q.db.QueryContext(ctx, getPuzzlesFromFollowingWithUsername, arg.FollowerID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetPuzzlesFromFollowingWithUsernameRow
+	for rows.Next() {
+		var i GetPuzzlesFromFollowingWithUsernameRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.OwnerID,
+			&i.Name,
+			&i.Width,
+			&i.Height,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.OwnerUsername,
 		); err != nil {
 			return nil, err
 		}
@@ -555,6 +646,15 @@ type UpdatePuzzleDimensionsParams struct {
 
 func (q *Queries) UpdatePuzzleDimensions(ctx context.Context, arg UpdatePuzzleDimensionsParams) error {
 	_, err := q.db.ExecContext(ctx, updatePuzzleDimensions, arg.Width, arg.Height, arg.ID)
+	return err
+}
+
+const updatePuzzleUpdatedAt = `-- name: UpdatePuzzleUpdatedAt :exec
+UPDATE puzzles SET updated_at = CURRENT_TIMESTAMP WHERE id = ?
+`
+
+func (q *Queries) UpdatePuzzleUpdatedAt(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, updatePuzzleUpdatedAt, id)
 	return err
 }
 

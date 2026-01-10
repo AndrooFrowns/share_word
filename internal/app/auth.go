@@ -35,7 +35,7 @@ func (s *Service) RegisterUser(ctx context.Context, username, password string) (
 	}
 	goodPassword := isValidPassword(password)
 	if !goodPassword {
-		return nil, errors.New("invalid password")
+		return nil, errors.New("password must be between 12 and 72 characters")
 	}
 
 	_, err := s.Queries.GetUserByUsername(ctx, username)

@@ -29,7 +29,7 @@ func Signup(errorMessage string) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"signup-form\" class=\"container\" data-signals=\"{username: '', password: '', confirmPassword: '', _fetching: false}\"><section class=\"card\"><h2>Create Account</h2>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"signup-form\" class=\"container flex\" style=\"align-items: center; justify-content: center; min-height: 60vh;\" data-signals=\"{username: '', password: '', confirmPassword: '', _fetching: false}\"><section class=\"card stack\" style=\"max-width: 400px; width: 100%;\"><h2 class=\"text-xl font-bold text-center\">Create Account</h2>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -52,7 +52,7 @@ func Signup(errorMessage string) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<form><div class=\"form-group\"><label>Username</label> <input class=\"input\" type=\"text\" data-bind:username data-attr:disabled=\"$_fetching\"></div><div class=\"form-group\"><label>Password</label> <input class=\"input\" type=\"password\" data-bind:password data-attr:disabled=\"$_fetching\"></div><div class=\"form-group\"><label>Confirm Password</label> <input class=\"input\" type=\"password\" data-bind:confirm-password data-attr:disabled=\"$_fetching\"></div><button type=\"button\" class=\"btn-primary\" data-indicator:_fetching data-attr:disabled=\"$_fetching\" data-on:click=\"@post('/signup')\">Sign Up</button></form></section></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<form class=\"stack\"><div class=\"form-group\"><label>Username</label> <input class=\"input\" type=\"text\" data-bind:username data-attr:disabled=\"$_fetching\" placeholder=\"Choose a username\"></div><div class=\"form-group\"><label>Password</label> <input class=\"input\" type=\"password\" data-bind:password data-attr:disabled=\"$_fetching\" placeholder=\"Minimum 12 characters\"></div><div class=\"form-group\"><label>Confirm Password</label> <input class=\"input\" type=\"password\" data-bind:confirm-password data-attr:disabled=\"$_fetching\" placeholder=\"Repeat your password\"></div><button type=\"button\" class=\"btn-primary mt-2\" data-indicator:_fetching data-attr:disabled=\"$_fetching\" data-on:click=\"@post('/signup')\">Sign Up</button></form><p class=\"text-sm text-center text-slate-500\">Already have an account? <a href=\"/login\" class=\"btn-link\">Log in</a></p></section></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

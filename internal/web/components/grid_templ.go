@@ -14,7 +14,7 @@ import (
 	"share_word/internal/db"
 )
 
-func PuzzleUI(puzzle *db.Puzzle, cells []app.AnnotatedCell, clues []app.Clue, mode string, editingClueID string, focusedCell string) templ.Component {
+func PuzzleUI(p db.GetPuzzleRow, cells []app.AnnotatedCell, clues []app.Clue, mode string, editingClueID string, focusedCell string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -40,9 +40,9 @@ func PuzzleUI(puzzle *db.Puzzle, cells []app.AnnotatedCell, clues []app.Clue, mo
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
-		templ_7745c5c3_Var2, templ_7745c5c3_Err = templruntime.SanitizeStyleAttributeValues(fmt.Sprintf("--col-count: %d;", puzzle.Width))
+		templ_7745c5c3_Var2, templ_7745c5c3_Err = templruntime.SanitizeStyleAttributeValues(fmt.Sprintf("--col-count: %d;", p.Width))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/grid.templ`, Line: 27, Col: 58}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/grid.templ`, Line: 27, Col: 53}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -53,7 +53,7 @@ func PuzzleUI(puzzle *db.Puzzle, cells []app.AnnotatedCell, clues []app.Clue, mo
 			return templ_7745c5c3_Err
 		}
 		for _, cell := range cells {
-			templ_7745c5c3_Err = Cell(cell, puzzle.ID, mode, focusedCell).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = Cell(cell, p.ID, mode, focusedCell).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -62,7 +62,7 @@ func PuzzleUI(puzzle *db.Puzzle, cells []app.AnnotatedCell, clues []app.Clue, mo
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = ClueSidebar(puzzle, clues, mode, editingClueID).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = ClueSidebar(p.ID, clues, mode, editingClueID).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -241,7 +241,7 @@ func CellSolve(cell app.AnnotatedCell, puzzleID string, focusedCell string) temp
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\" data-bind=\"cellValue\" data-init=\"el.focus(); el.select()\" data-on:input=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\" data-bind:cell-value data-init=\"el.focus(); el.select()\" data-on:input=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -369,7 +369,7 @@ func CellEdit(cell app.AnnotatedCell, puzzleID string) templ.Component {
 	})
 }
 
-func ClueSidebar(puzzle *db.Puzzle, clues []app.Clue, mode string, editingClueID string) templ.Component {
+func ClueSidebar(puzzleID string, clues []app.Clue, mode string, editingClueID string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -396,7 +396,7 @@ func ClueSidebar(puzzle *db.Puzzle, clues []app.Clue, mode string, editingClueID
 		}
 		for _, clue := range clues {
 			if clue.Direction == app.DirectionAcross {
-				templ_7745c5c3_Err = ClueItem(puzzle.ID, clue, mode, editingClueID).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = ClueItem(puzzleID, clue, mode, editingClueID).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -408,7 +408,7 @@ func ClueSidebar(puzzle *db.Puzzle, clues []app.Clue, mode string, editingClueID
 		}
 		for _, clue := range clues {
 			if clue.Direction == app.DirectionDown {
-				templ_7745c5c3_Err = ClueItem(puzzle.ID, clue, mode, editingClueID).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = ClueItem(puzzleID, clue, mode, editingClueID).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -501,7 +501,7 @@ func ClueItem(puzzleID string, clue app.Clue, mode string, editingClueID string)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "\" data-indicator=\"_isSaving\" data-init=\"el.focus(); el.select()\" data-bind=\"clueText\" data-on:keydown.enter=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "\" data-indicator=\"_isSaving\" data-init=\"el.focus(); el.select()\" data-bind:clue-text data-on:keydown.enter=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -608,7 +608,7 @@ func ClueItem(puzzleID string, clue app.Clue, mode string, editingClueID string)
 	})
 }
 
-func PuzzlePage(user *db.User, puzzle *db.Puzzle, cells []app.AnnotatedCell, clues []app.Clue, mode string, serverVersion int64, editingClueID string) templ.Component {
+func PuzzlePage(user *db.User, p db.GetPuzzleRow, cells []app.AnnotatedCell, clues []app.Clue, mode string, serverVersion int64, editingClueID string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -629,18 +629,18 @@ func PuzzlePage(user *db.User, puzzle *db.Puzzle, cells []app.AnnotatedCell, clu
 			templ_7745c5c3_Var30 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		streamURL := fmt.Sprintf("/puzzles/%s/stream", puzzle.ID)
+		streamURL := fmt.Sprintf("/puzzles/%s/stream", p.ID)
 		if mode == "edit" {
-			streamURL = fmt.Sprintf("/puzzles/%s/edit/stream", puzzle.ID)
+			streamURL = fmt.Sprintf("/puzzles/%s/edit/stream", p.ID)
 		}
 		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "<div id=\"puzzle-page\" style=\"height: 100%; display: flex; flex-direction: column;\" data-signals=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var31 string
-		templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("{mode: '%s', width: %d, height: %d, importedFiles: [], _sidebarOpen: true, _settingsOpen: false, _zoomLog: 0, _panX: 0, _panY: 0, _isDragging: false, _isClick: true, symmetryMode: 'rotational', direction: 'across', cellValue: '', clueText: '', _isSaving: false, serverVersion: %d, clientID: crypto.randomUUID()}", mode, puzzle.Width, puzzle.Height, serverVersion))
+		templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("{mode: '%s', width: %d, height: %d, importedFiles: [], _sidebarOpen: true, _settingsOpen: false, _zoomLog: 0, _panX: 0, _panY: 0, _isDragging: false, _isClick: true, symmetryMode: 'rotational', direction: 'across', cellValue: '', clueText: '', _isSaving: false, serverVersion: %d, clientID: crypto.randomUUID()}", mode, p.Width, p.Height, serverVersion))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/grid.templ`, Line: 178, Col: 393}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/grid.templ`, Line: 178, Col: 383}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 		if templ_7745c5c3_Err != nil {
@@ -659,92 +659,96 @@ func PuzzlePage(user *db.User, puzzle *db.Puzzle, cells []app.AnnotatedCell, clu
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "\"><header><div style=\"display: flex; align-items: center; gap: 16px;\"><a href=\"/\" class=\"brand\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\" ry=\"2\"></rect><line x1=\"3\" y1=\"9\" x2=\"21\" y2=\"9\"></line><line x1=\"9\" y1=\"21\" x2=\"9\" y2=\"9\"></line></svg> ShareWord</a> <button class=\"btn-icon\" data-on:click=\"$_sidebarOpen = !$_sidebarOpen\" title=\"Toggle Sidebar\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\" ry=\"2\"></rect><line x1=\"9\" y1=\"3\" x2=\"9\" y2=\"21\"></line></svg></button></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "\"><header><div style=\"display: flex; align-items: center; gap: 16px;\"><a href=\"/\" class=\"brand\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\" ry=\"2\"></rect><line x1=\"3\" y1=\"9\" x2=\"21\" y2=\"9\"></line><line x1=\"9\" y1=\"21\" x2=\"9\" y2=\"9\"></line></svg> ShareWord</a><div style=\"width: 1px; height: 24px; background: var(--slate-200); margin: 0 8px;\"></div><div class=\"stack\" style=\"gap: 2px;\"><h2 class=\"text-sm font-bold\" style=\"margin: 0;\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var33 string
+		templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(p.Name)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/grid.templ`, Line: 189, Col: 62}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "</h2><p class=\"text-xs text-slate-400\">by <a href=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var34 templ.SafeURL
+		templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/users/%s", p.OwnerID)))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/grid.templ`, Line: 190, Col: 102}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "\" class=\"hover:underline\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var35 string
+		templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(p.OwnerUsername)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/grid.templ`, Line: 190, Col: 146}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "</a></p></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if mode == "edit" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "<div style=\"display: flex; align-items: center; gap: 8px;\"><label class=\"text-sm font-bold text-slate-500\">Size:</label> <input type=\"number\" class=\"input text-center\" style=\"width: 50px;\" data-bind=\"width\"> <span class=\"text-slate-400\">x</span> <input type=\"number\" class=\"input text-center\" style=\"width: 50px;\" data-bind=\"height\"> <button class=\"btn-sm\" data-on:click=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "<div style=\"display: flex; align-items: center; gap: 8px;\"><label class=\"text-sm font-bold text-slate-500\">Size:</label> <input type=\"number\" class=\"input text-center\" style=\"width: 50px;\" data-bind=\"width\"> <span class=\"text-slate-400\">x</span> <input type=\"number\" class=\"input text-center\" style=\"width: 50px;\" data-bind=\"height\"> <button class=\"btn-sm\" data-on:click=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var33 string
-			templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("@post('/puzzles/%s/resize')", puzzle.ID))
+			var templ_7745c5c3_Var36 string
+			templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("@post('/puzzles/%s/resize')", p.ID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/grid.templ`, Line: 202, Col: 97}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/grid.templ`, Line: 200, Col: 92}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "\">Resize</button><div style=\"width: 1px; height: 24px; background: var(--slate-200); margin: 0 8px;\"></div><button class=\"btn-sm\" data-on:click=\"document.getElementById('import-file').click()\">Import</button> <input type=\"file\" id=\"import-file\" class=\"hidden\" accept=\".puz,.ipuz\" data-bind=\"importedFiles\" data-effect=\"")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var34 string
-			templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("if($importedFiles.length > 0) @post('/puzzles/%s/import')", puzzle.ID))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/grid.templ`, Line: 211, Col: 103}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "\">Resize</button><div style=\"width: 1px; height: 24px; background: var(--slate-200); margin: 0 8px;\"></div><button class=\"btn-sm\" data-on:click=\"document.getElementById('import-file').click()\">Import</button> <input type=\"file\" id=\"import-file\" class=\"hidden\" accept=\".puz,.ipuz\" data-bind=\"importedFiles\" data-effect=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "\"> ")
+			var templ_7745c5c3_Var37 string
+			templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("if($importedFiles.length > 0) @post('/puzzles/%s/import')", p.ID))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/grid.templ`, Line: 209, Col: 98}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if puzzle.Width == puzzle.Height {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "<div style=\"width: 1px; height: 24px; background: var(--slate-200); margin: 0 8px;\"></div><div style=\"display: flex; align-items: center; gap: 8px;\"><label class=\"text-sm font-bold text-slate-500\">Symmetry:</label> <select class=\"input\" data-bind=\"symmetryMode\"><option value=\"none\">None</option> <option value=\"horizontal\">Horizontal</option> <option value=\"vertical\">Vertical</option> <option value=\"both\">Both</option> <option value=\"rotational\">Rotational</option></select></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "\"> ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if p.Width == p.Height {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "<div style=\"width: 1px; height: 24px; background: var(--slate-200); margin: 0 8px;\"></div><div style=\"display: flex; align-items: center; gap: 8px;\"><label class=\"text-sm font-bold text-slate-500\">Symmetry:</label> <select class=\"input\" data-bind=\"symmetryMode\"><option value=\"none\">None</option> <option value=\"horizontal\">Horizontal</option> <option value=\"vertical\">Vertical</option> <option value=\"both\">Both</option> <option value=\"rotational\">Rotational</option></select></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "</div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "<nav class=\"tab-bar\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "<nav class=\"tab-bar\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var35 = []any{"tab-link", templ.KV("active", mode == "edit")}
-		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var35...)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "<a href=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var36 templ.SafeURL
-		templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/puzzles/%s/edit", puzzle.ID)))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/grid.templ`, Line: 230, Col: 71}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "\" class=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var37 string
-		templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var35).String())
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/grid.templ`, Line: 1, Col: 0}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "\">Edit</a> ")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var38 = []any{"tab-link", templ.KV("active", mode == "solve")}
+		var templ_7745c5c3_Var38 = []any{"tab-link", templ.KV("active", mode == "edit")}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var38...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -754,9 +758,9 @@ func PuzzlePage(user *db.User, puzzle *db.Puzzle, cells []app.AnnotatedCell, clu
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var39 templ.SafeURL
-		templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/puzzles/%s", puzzle.ID)))
+		templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/puzzles/%s/edit", p.ID)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/grid.templ`, Line: 232, Col: 66}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/grid.templ`, Line: 228, Col: 66}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
 		if templ_7745c5c3_Err != nil {
@@ -775,69 +779,104 @@ func PuzzlePage(user *db.User, puzzle *db.Puzzle, cells []app.AnnotatedCell, clu
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "\">Solve</a></nav><div class=\"peers\" style=\"display: flex; align-items: center; gap: 12px;\"><div class=\"relative\"><button class=\"btn-icon\" data-on:click=\"$_settingsOpen = !$_settingsOpen\" title=\"Settings\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"12\" cy=\"12\" r=\"3\"></circle><path d=\"M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z\"></path></svg></button><div class=\"dropdown-menu\" data-show=\"$_settingsOpen\" data-on:click.outside=\"$_settingsOpen = false\"><div class=\"dropdown-item\"><div class=\"flex items-center gap-4 mb-1\"><label class=\"text-sm font-bold\">Zoom</label> <button class=\"text-xs text-slate-400 hover:text-primary hover:underline\" data-on:click=\"$_zoomLog = 0\">Reset</button></div><div class=\"flex items-center gap-2\"><input type=\"range\" min=\"-60\" max=\"60\" step=\"1\" data-bind=\"_zoomLog\" class=\"w-full\"> <span class=\"text-xs w-8\" data-text=\"Math.round(Math.pow(10, $_zoomLog / 100) * 100) + '%'\">100%</span></div></div><div class=\"dropdown-item border-t pt-2\"><div class=\"flex items-center justify-between\"><label class=\"text-sm font-bold\">Position</label> <button class=\"text-xs text-slate-400 hover:text-primary hover:underline\" data-on:click=\"$_panX = 0; $_panY = 0\">Recenter</button></div></div></div></div><div class=\"peers\" id=\"avatar-container\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "\">Edit</a> ")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var41 = []any{"tab-link", templ.KV("active", mode == "solve")}
+		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var41...)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "<a href=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var42 templ.SafeURL
+		templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/puzzles/%s", p.ID)))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/grid.templ`, Line: 230, Col: 61}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var42))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "\" class=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var43 string
+		templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var41).String())
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/grid.templ`, Line: 1, Col: 0}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, "\">Solve</a></nav><div class=\"peers\" style=\"display: flex; align-items: center; gap: 12px;\"><div class=\"relative\"><button class=\"btn-icon\" data-on:click=\"$_settingsOpen = !$_settingsOpen\" title=\"Settings\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"12\" cy=\"12\" r=\"3\"></circle><path d=\"M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z\"></path></svg></button><div class=\"dropdown-menu\" data-show=\"$_settingsOpen\" data-on:click.outside=\"$_settingsOpen = false\"><div class=\"dropdown-item\"><div class=\"flex items-center gap-4 mb-1\"><label class=\"text-sm font-bold\">Zoom</label> <button class=\"text-xs text-slate-400 hover:text-primary hover:underline\" data-on:click=\"$_zoomLog = 0\">Reset</button></div><div class=\"flex items-center gap-2\"><input type=\"range\" min=\"-60\" max=\"60\" step=\"1\" data-bind=\"_zoomLog\" class=\"w-full\"> <span class=\"text-xs w-8\" data-text=\"Math.round(Math.pow(10, $_zoomLog / 100) * 100) + '%'\">100%</span></div></div><div class=\"dropdown-item border-t pt-2\"><div class=\"flex items-center justify-between\"><label class=\"text-sm font-bold\">Position</label> <button class=\"text-xs text-slate-400 hover:text-primary hover:underline\" data-on:click=\"$_panX = 0; $_panY = 0\">Recenter</button></div></div></div></div><div class=\"peers\" id=\"avatar-container\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if user != nil {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "<div class=\"avatar\" style=\"background-color: var(--primary);\" title=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "<div class=\"avatar\" style=\"background-color: var(--primary);\" title=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var41 string
-			templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(user.Username)
+			var templ_7745c5c3_Var44 string
+			templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(user.Username)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/grid.templ`, Line: 288, Col: 89}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/grid.templ`, Line: 286, Col: 89}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "\">")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var42 string
-			templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(user.Username[:1])
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/grid.templ`, Line: 289, Col: 26}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var42))
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 66, "\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, "<div class=\"avatar-dropdown\"><a href=\"")
+			var templ_7745c5c3_Var45 string
+			templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(user.Username[:1])
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/grid.templ`, Line: 287, Col: 26}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var43 templ.SafeURL
-			templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/users/%s", user.ID)))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/grid.templ`, Line: 291, Col: 66}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, "<div class=\"avatar-dropdown\"><a href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "\">Profile</a> <button data-on:click=\"@post('/logout')\">Logout</button></div></div>")
+			var templ_7745c5c3_Var46 templ.SafeURL
+			templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/users/%s", user.ID)))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/grid.templ`, Line: 289, Col: 66}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var46))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, "\">Profile</a> <a href=\"/\">Dashboard</a> <button data-on:click=\"@post('/logout')\">Logout</button></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 66, "<div class=\"avatar\" style=\"background-color: var(--slate-400);\">?</div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "<div class=\"avatar\" style=\"background-color: var(--slate-400);\">?</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, "</div></div></header><main id=\"puzzle-ui-container\" style=\"flex: 1; display: flex; flex-direction: column;\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, "</div></div></header><main id=\"puzzle-ui-container\" style=\"flex: 1; display: flex; flex-direction: column;\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = PuzzleUI(puzzle, cells, clues, mode, editingClueID, "").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = PuzzleUI(p, cells, clues, mode, editingClueID, "").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, "</main></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 71, "</main></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

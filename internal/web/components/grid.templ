@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-templ PuzzleUI(puzzle *db.Puzzle, cells []app.AnnotatedCell, clues []app.Clue, mode string, editingClueID string, focusedCell string) {
+templ PuzzleUI(p db.GetPuzzleRow, cells []app.AnnotatedCell, clues []app.Clue, mode string, editingClueID string, focusedCell string) {
 	<div class="puzzle-layout" id="puzzle-ui">
 		<div 
 			class="stage" 
@@ -24,16 +24,16 @@ templ PuzzleUI(puzzle *db.Puzzle, cells []app.AnnotatedCell, clues []app.Clue, m
 				<div 
 					id="crossword-grid"
 					class="crossword-grid" 
-					style={ fmt.Sprintf("--col-count: %d;", puzzle.Width) }
+					style={ fmt.Sprintf("--col-count: %d;", p.Width) }
 				>
 					for _, cell := range cells {
-						@Cell(cell, puzzle.ID, mode, focusedCell)
+						@Cell(cell, p.ID, mode, focusedCell)
 					}
 				</div>
 			</div>
 		</div>
 		
-		@ClueSidebar(puzzle, clues, mode, editingClueID)
+		@ClueSidebar(p.ID, clues, mode, editingClueID)
 	</div>
 }
 
@@ -65,7 +65,7 @@ templ CellSolve(cell app.AnnotatedCell, puzzleID string, focusedCell string) {
 					type="text" 
 					class="cell-input" 
 					data-signals={ fmt.Sprintf("{cellValue: %q}", cell.Char) }
-					data-bind="cellValue"
+					data-bind:cell-value
 					data-init="el.focus(); el.select()"
 					data-on:input={ fmt.Sprintf("@post('/puzzles/%s/cells/%d/%d/update')", puzzleID, cell.X, cell.Y) }
 				/>
@@ -87,7 +87,7 @@ templ CellEdit(cell app.AnnotatedCell, puzzleID string) {
 	</div>
 }
 
-templ ClueSidebar(puzzle *db.Puzzle, clues []app.Clue, mode string, editingClueID string) {
+templ ClueSidebar(puzzleID string, clues []app.Clue, mode string, editingClueID string) {
 	<aside 
 		class="clue-sidebar" 
 		id="clue-sidebar"
@@ -106,7 +106,7 @@ templ ClueSidebar(puzzle *db.Puzzle, clues []app.Clue, mode string, editingClueI
 				<ul class="list-none stack">
 					for _, clue := range clues {
 						if clue.Direction == app.DirectionAcross {
-							@ClueItem(puzzle.ID, clue, mode, editingClueID)
+							@ClueItem(puzzleID, clue, mode, editingClueID)
 						}
 					}
 				</ul>
@@ -116,7 +116,7 @@ templ ClueSidebar(puzzle *db.Puzzle, clues []app.Clue, mode string, editingClueI
 				<ul class="list-none stack">
 					for _, clue := range clues {
 						if clue.Direction == app.DirectionDown {
-							@ClueItem(puzzle.ID, clue, mode, editingClueID)
+							@ClueItem(puzzleID, clue, mode, editingClueID)
 						}
 					}
 				</ul>
@@ -141,7 +141,7 @@ templ ClueItem(puzzleID string, clue app.Clue, mode string, editingClueID string
 				data-signals={ fmt.Sprintf("{clueText: %q}", clue.Text) }
 				data-indicator="_isSaving"
 				data-init="el.focus(); el.select()"
-				data-bind="clueText"
+				data-bind:clue-text
 				data-on:keydown.enter={ fmt.Sprintf("if(!$_isSaving) { evt.preventDefault(); @post('/puzzles/%s/clues/%d/%s/save') }", puzzleID, clue.Number, clue.Direction) }
 				data-on:blur={ fmt.Sprintf("if(!$_isSaving) { @post('/puzzles/%s/clues/%d/%s/save') }", puzzleID, clue.Number, clue.Direction) }
 			/>
@@ -167,15 +167,15 @@ templ ClueItem(puzzleID string, clue app.Clue, mode string, editingClueID string
 	</li>
 }
 
-templ PuzzlePage(user *db.User, puzzle *db.Puzzle, cells []app.AnnotatedCell, clues []app.Clue, mode string, serverVersion int64, editingClueID string) {
-	{{ streamURL := fmt.Sprintf("/puzzles/%s/stream", puzzle.ID) }}
+templ PuzzlePage(user *db.User, p db.GetPuzzleRow, cells []app.AnnotatedCell, clues []app.Clue, mode string, serverVersion int64, editingClueID string) {
+	{{ streamURL := fmt.Sprintf("/puzzles/%s/stream", p.ID) }}
 	if mode == "edit" {
-		{{ streamURL = fmt.Sprintf("/puzzles/%s/edit/stream", puzzle.ID) }}
+		{{ streamURL = fmt.Sprintf("/puzzles/%s/edit/stream", p.ID) }}
 	}
 	<div 
 		id="puzzle-page"
 		style="height: 100%; display: flex; flex-direction: column;"
-		data-signals={ fmt.Sprintf("{mode: '%s', width: %d, height: %d, importedFiles: [], _sidebarOpen: true, _settingsOpen: false, _zoomLog: 0, _panX: 0, _panY: 0, _isDragging: false, _isClick: true, symmetryMode: 'rotational', direction: 'across', cellValue: '', clueText: '', _isSaving: false, serverVersion: %d, clientID: crypto.randomUUID()}", mode, puzzle.Width, puzzle.Height, serverVersion) }
+		data-signals={ fmt.Sprintf("{mode: '%s', width: %d, height: %d, importedFiles: [], _sidebarOpen: true, _settingsOpen: false, _zoomLog: 0, _panX: 0, _panY: 0, _isDragging: false, _isClick: true, symmetryMode: 'rotational', direction: 'across', cellValue: '', clueText: '', _isSaving: false, serverVersion: %d, clientID: crypto.randomUUID()}", mode, p.Width, p.Height, serverVersion) }
 		data-init={ fmt.Sprintf("@get('%s?clientID=' + $clientID)", streamURL) }
 	>
 		<header>
@@ -184,13 +184,11 @@ templ PuzzlePage(user *db.User, puzzle *db.Puzzle, cells []app.AnnotatedCell, cl
 					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
 					ShareWord
 				</a>
-				<button 
-					class="btn-icon" 
-					data-on:click="$_sidebarOpen = !$_sidebarOpen"
-					title="Toggle Sidebar"
-				>
-					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
-				</button>
+				<div style="width: 1px; height: 24px; background: var(--slate-200); margin: 0 8px;"></div>
+				<div class="stack" style="gap: 2px;">
+					<h2 class="text-sm font-bold" style="margin: 0;">{ p.Name }</h2>
+					<p class="text-xs text-slate-400">by <a href={ templ.SafeURL(fmt.Sprintf("/users/%s", p.OwnerID)) } class="hover:underline">{ p.OwnerUsername }</a></p>
+				</div>
 			</div>
 			
 			if mode == "edit" {
@@ -199,7 +197,7 @@ templ PuzzlePage(user *db.User, puzzle *db.Puzzle, cells []app.AnnotatedCell, cl
 					<input type="number" class="input text-center" style="width: 50px;" data-bind="width" />
 					<span class="text-slate-400">x</span>
 					<input type="number" class="input text-center" style="width: 50px;" data-bind="height" />
-					<button class="btn-sm" data-on:click={ fmt.Sprintf("@post('/puzzles/%s/resize')", puzzle.ID) }>Resize</button>
+					<button class="btn-sm" data-on:click={ fmt.Sprintf("@post('/puzzles/%s/resize')", p.ID) }>Resize</button>
 					<div style="width: 1px; height: 24px; background: var(--slate-200); margin: 0 8px;"></div>
 					<button class="btn-sm" data-on:click="document.getElementById('import-file').click()">Import</button>
 					<input 
@@ -208,9 +206,9 @@ templ PuzzlePage(user *db.User, puzzle *db.Puzzle, cells []app.AnnotatedCell, cl
 						class="hidden" 
 						accept=".puz,.ipuz" 
 						data-bind="importedFiles" 
-						data-effect={ fmt.Sprintf("if($importedFiles.length > 0) @post('/puzzles/%s/import')", puzzle.ID) } 
+						data-effect={ fmt.Sprintf("if($importedFiles.length > 0) @post('/puzzles/%s/import')", p.ID) } 
 					/>
-					if puzzle.Width == puzzle.Height {
+					if p.Width == p.Height {
 						<div style="width: 1px; height: 24px; background: var(--slate-200); margin: 0 8px;"></div>
 						<div style="display: flex; align-items: center; gap: 8px;">
 							<label class="text-sm font-bold text-slate-500">Symmetry:</label>
@@ -227,9 +225,9 @@ templ PuzzlePage(user *db.User, puzzle *db.Puzzle, cells []app.AnnotatedCell, cl
 			}
 
 			<nav class="tab-bar">
-				<a href={ templ.SafeURL(fmt.Sprintf("/puzzles/%s/edit", puzzle.ID)) } 
+				<a href={ templ.SafeURL(fmt.Sprintf("/puzzles/%s/edit", p.ID)) } 
 				   class={ "tab-link", templ.KV("active", mode == "edit") }>Edit</a>
-				<a href={ templ.SafeURL(fmt.Sprintf("/puzzles/%s", puzzle.ID)) } 
+				<a href={ templ.SafeURL(fmt.Sprintf("/puzzles/%s", p.ID)) } 
 				   class={ "tab-link", templ.KV("active", mode == "solve") }>Solve</a>
 			</nav>
 
@@ -289,6 +287,7 @@ templ PuzzlePage(user *db.User, puzzle *db.Puzzle, cells []app.AnnotatedCell, cl
 							{ user.Username[:1] }
 							<div class="avatar-dropdown">
 								<a href={ templ.SafeURL(fmt.Sprintf("/users/%s", user.ID)) }>Profile</a>
+								<a href="/">Dashboard</a>
 								<button data-on:click="@post('/logout')">Logout</button>
 							</div>
 						</div>
@@ -300,7 +299,7 @@ templ PuzzlePage(user *db.User, puzzle *db.Puzzle, cells []app.AnnotatedCell, cl
 		</header>
 		
 		<main id="puzzle-ui-container" style="flex: 1; display: flex; flex-direction: column;">
-			@PuzzleUI(puzzle, cells, clues, mode, editingClueID, "")
+			@PuzzleUI(p, cells, clues, mode, editingClueID, "")
 		</main>
 	</div>
 }

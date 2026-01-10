@@ -5,6 +5,7 @@
 package db
 
 import (
+	"database/sql"
 	"time"
 )
 
@@ -38,6 +39,7 @@ type Puzzle struct {
 	Width     int64
 	Height    int64
 	CreatedAt time.Time
+	UpdatedAt sql.NullTime
 }
 
 type Session struct {

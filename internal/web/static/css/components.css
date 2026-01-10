@@ -7,6 +7,25 @@ body {
     overscroll-behavior: none;
 }
 
+main {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.puzzle-card-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    border-color: var(--primary) !important;
+}
+
+.puzzle-list-group {
+    background: white;
+    border: 1px solid var(--slate-200);
+    border-radius: 12px;
+    padding: var(--space-6);
+    box-shadow: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
+}
+
 header {
     background: white;
     border-bottom: 1px solid var(--slate-200);
@@ -331,22 +350,25 @@ header {
     top: 120px;
     width: 24px;
     height: 48px;
-    background: white;
-    border: 1px solid var(--slate-200);
+    background: var(--primary);
+    border: 1px solid var(--brand-hover);
     border-right: none;
     border-radius: 8px 0 0 8px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: -2px 0 4px rgba(0,0,0,0.05);
+    box-shadow: -4px 0 10px rgba(59, 130, 246, 0.2);
     z-index: 51;
-    color: var(--slate-500);
+    color: white;
+    transition: all 0.2s;
 }
 
 .sidebar-toggle:hover {
-    color: var(--primary);
-    background: var(--slate-50);
+    background: var(--brand-hover);
+    color: white;
+    width: 28px;
+    left: -28px;
 }
 
 .rotate-180 {

@@ -7,7 +7,7 @@ import (
 
 var EnableHotReload = os.Getenv("HOT_RELOAD") == "true"
 
-templ Layout(contents templ.Component, user *db.User) {
+templ Layout(contents templ.Component, user *db.User, showNavbar bool) {
 	<!DOCTYPE html>
 	<html lang="en">
 		<head>
@@ -25,6 +25,9 @@ templ Layout(contents templ.Component, user *db.User) {
 		<body>
 			if EnableHotReload {
 				<div id="hot-reload" data-on:sse-error="setTimeout(() => window.location.reload(), 500)" class="hidden"></div>
+			}
+			if showNavbar {
+				@Navbar(user)
 			}
 			<main style="flex: 1; display: flex; flex-direction: column;">
 				@contents

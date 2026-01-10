@@ -98,7 +98,7 @@ func TestUnauthorizedAccess(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Errorf("expected 200, got %d", rr.Code)
 	}
-	if !strings.Contains(rr.Body.String(), "Welcome to ShareWorld") {
+	if !strings.Contains(rr.Body.String(), "Collaborative Crosswords") {
 		t.Errorf("expected welcome message for guest, got body length %d", len(rr.Body.String()))
 	}
 }

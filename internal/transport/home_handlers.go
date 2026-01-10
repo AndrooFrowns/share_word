@@ -9,7 +9,7 @@ import (
 func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 	userID := s.SessionManager.GetString(r.Context(), "userID")
 	if userID == "" {
-		components.Layout(components.Home(nil), nil).Render(r.Context(), w)
+		components.Layout(components.Home(nil), nil, true).Render(r.Context(), w)
 		return
 	}
 
@@ -23,7 +23,7 @@ func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 	// Fetch data for the dashboard
 	limit, offset := int64(10), int64(0)
 	myPuzzles, _ := s.Service.Queries.GetPuzzlesByOwner(r.Context(), db.GetPuzzlesByOwnerParams{OwnerID: userID, Limit: limit, Offset: offset})
-	followingPuzzles, _ := s.Service.Queries.GetPuzzlesFromFollowing(r.Context(), db.GetPuzzlesFromFollowingParams{FollowerID: userID, Limit: limit, Offset: offset})
+	followingPuzzles, _ := s.Service.Queries.GetPuzzlesFromFollowingWithUsername(r.Context(), db.GetPuzzlesFromFollowingWithUsernameParams{FollowerID: userID, Limit: limit, Offset: offset})
 
-	components.Layout(components.Dashboard(user, myPuzzles, followingPuzzles), user).Render(r.Context(), w)
+	components.Layout(components.Dashboard(user, myPuzzles, followingPuzzles), user, true).Render(r.Context(), w)
 }

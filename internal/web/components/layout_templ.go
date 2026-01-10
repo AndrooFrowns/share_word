@@ -15,7 +15,7 @@ import (
 
 var EnableHotReload = os.Getenv("HOT_RELOAD") == "true"
 
-func Layout(contents templ.Component, user *db.User) templ.Component {
+func Layout(contents templ.Component, user *db.User, showNavbar bool) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -42,6 +42,12 @@ func Layout(contents templ.Component, user *db.User) templ.Component {
 		}
 		if EnableHotReload {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<div id=\"hot-reload\" data-on:sse-error=\"setTimeout(() => window.location.reload(), 500)\" class=\"hidden\"></div>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		if showNavbar {
+			templ_7745c5c3_Err = Navbar(user).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
