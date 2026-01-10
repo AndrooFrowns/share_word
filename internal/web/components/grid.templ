@@ -22,10 +22,25 @@ templ PuzzleUI(p db.GetPuzzleRow, cells []app.AnnotatedCell, clues []app.Clue, m
 		<div 
 			class="stage" 
 			id="puzzle-stage"
-			data-on:pointerdown="$_isDragging = true; $_isClick = true; $_lastX = evt.clientX; $_lastY = evt.clientY; el.setPointerCapture(evt.pointerId)"
+			data-on:pointerdown="$_isDragging = true; $_isClick = true; $_startX = evt.clientX; $_startY = evt.clientY; $_lastX = evt.clientX; $_lastY = evt.clientY;"
 			data-on:pointerup="$_isDragging = false; el.releasePointerCapture(evt.pointerId)"
 			data-on:pointercancel="$_isDragging = false"
-			data-on:pointermove="if ($_isDragging) { $_isClick = false; $_panX += (evt.clientX - $_lastX); $_panY += (evt.clientY - $_lastY); $_lastX = evt.clientX; $_lastY = evt.clientY; }"
+			data-on:pointermove="if ($_isDragging) { 
+				const dx = evt.clientX - $_startX;
+				const dy = evt.clientY - $_startY;
+				if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+					if ($_isClick) {
+						$_isClick = false;
+						el.setPointerCapture(evt.pointerId);
+					}
+				}
+				if (!$_isClick) {
+					$_panX += (evt.clientX - $_lastX);
+					$_panY += (evt.clientY - $_lastY);
+				}
+				$_lastX = evt.clientX;
+				$_lastY = evt.clientY;
+			}"
 		>
 			<div 
 				class="grid-layer"
@@ -155,7 +170,7 @@ templ CellSolve(cell app.AnnotatedCell, puzzleID string, focusedCell string, act
 		id={ fmt.Sprintf("cell-%d-%d", cell.X, cell.Y) }
 		class={ "cell", templ.KV("block", cell.IsBlock), templ.KV("cell-active", isFocused), templ.KV("word-active", isWordActive && !isFocused) }
 		if !cell.IsBlock {
-			data-on:click={ fmt.Sprintf("if($_isClick){ @post('/puzzles/%s/cells/%d/%d/focus'); document.getElementById('puzzle-input')?.focus() }", puzzleID, cell.X, cell.Y) }
+			data-on:click={ fmt.Sprintf("console.log('Cell click on %d,%d, isClick:', $_isClick); if($_isClick){ @post('/puzzles/%s/cells/%d/%d/focus'); document.getElementById('puzzle-input')?.focus() }", cell.X, cell.Y, puzzleID, cell.X, cell.Y) }
 		}
 	>
 		if !cell.IsBlock {
@@ -170,7 +185,7 @@ templ CellSolve(cell app.AnnotatedCell, puzzleID string, focusedCell string, act
 templ CellEdit(cell app.AnnotatedCell, puzzleID string) {
 	<div
 		class={ "cell", templ.KV("block", cell.IsBlock) }
-		data-on:click={ fmt.Sprintf("if($_isClick){ @post('/puzzles/%s/cells/%d/%d/set-block/%t') }", puzzleID, cell.X, cell.Y, !cell.IsBlock) }
+		data-on:click={ fmt.Sprintf("console.log('CellEdit click on %d,%d, isClick:', $_isClick); if($_isClick){ @post('/puzzles/%s/cells/%d/%d/set-block/%t') }", cell.X, cell.Y, puzzleID, cell.X, cell.Y, !cell.IsBlock) }
 	>
 		if !cell.IsBlock && cell.Number > 0 {
 			<span class="cell-num">{ fmt.Sprint(cell.Number) }</span>

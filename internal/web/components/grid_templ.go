@@ -41,7 +41,7 @@ func PuzzleUI(p db.GetPuzzleRow, cells []app.AnnotatedCell, clues []app.Clue, mo
 			return templ_7745c5c3_Err
 		}
 		if mode == "solve" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<input id=\"puzzle-input\" type=\"text\" style=\"position: absolute; opacity: 0; pointer-events: none;\" data-on:keydown=\"if(evt.key === 'Backspace' || evt.key === ' ' || evt.key.startsWith('Arrow') || evt.key === 'Tab') { evt.preventDefault(); $lastKey = evt.key; $isShift = evt.shiftKey; $isCtrl = evt.ctrlKey; @post('/puzzles/' + $pID + '/input') }\" data-on:input=\"$lastKey = evt.target.value.slice(-1); evt.target.value = ''; @post('/puzzles/' + $pID + '/input')\" data-init=\"el.focus()\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<input id=\"puzzle-input\" type=\"text\" style=\"position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0; font-size: 16px;\" data-on:keydown=\"if(evt.key === 'Backspace' || evt.key === ' ' || evt.key.startsWith('Arrow') || evt.key === 'Tab') { evt.preventDefault(); $lastKey = evt.key; $isShift = evt.shiftKey; $isCtrl = evt.ctrlKey; @post('/puzzles/' + $pID + '/input') }\" data-on:input=\"$lastKey = evt.target.value.slice(-1); evt.target.value = ''; @post('/puzzles/' + $pID + '/input')\" data-init=\"el.focus()\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -388,9 +388,9 @@ func CellSolve(cell app.AnnotatedCell, puzzleID string, focusedCell string, acti
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var15 string
-			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("if($_isClick){ @post('/puzzles/%s/cells/%d/%d/focus'); document.getElementById('puzzle-input')?.focus() }", puzzleID, cell.X, cell.Y))
+			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("console.log('Cell click on %d,%d, isClick:', $_isClick); if($_isClick){ @post('/puzzles/%s/cells/%d/%d/focus'); document.getElementById('puzzle-input')?.focus() }", cell.X, cell.Y, puzzleID, cell.X, cell.Y))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/grid.templ`, Line: 158, Col: 165}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/grid.templ`, Line: 158, Col: 238}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 			if templ_7745c5c3_Err != nil {
@@ -495,9 +495,9 @@ func CellEdit(cell app.AnnotatedCell, puzzleID string) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var21 string
-		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("if($_isClick){ @post('/puzzles/%s/cells/%d/%d/set-block/%t') }", puzzleID, cell.X, cell.Y, !cell.IsBlock))
+		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("console.log('CellEdit click on %d,%d, isClick:', $_isClick); if($_isClick){ @post('/puzzles/%s/cells/%d/%d/set-block/%t') }", cell.X, cell.Y, puzzleID, cell.X, cell.Y, !cell.IsBlock))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/grid.templ`, Line: 173, Col: 136}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/grid.templ`, Line: 173, Col: 213}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 		if templ_7745c5c3_Err != nil {
