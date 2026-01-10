@@ -35,7 +35,7 @@ func PuzzleUI(p db.GetPuzzleRow, cells []app.AnnotatedCell, clues []app.Clue, mo
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"puzzle-layout\" id=\"puzzle-ui\"><div class=\"stage\" id=\"puzzle-stage\" data-on:mousedown=\"$_isDragging = true; $_isClick = true\" data-on:mouseup=\"$_isDragging = false\" data-on:mouseleave=\"$_isDragging = false\" data-on:mousemove=\"if ($_isDragging) { $_isClick = false; $_panX += evt.movementX; $_panY += evt.movementY }\"><div class=\"grid-layer\" id=\"grid-layer\" data-style=\"{ '--zoom': Math.pow(10, $_zoomLog / 100), '--pan-x': $_panX, '--pan-y': $_panY }\"><div id=\"crossword-grid\" class=\"crossword-grid\" style=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"puzzle-layout\" id=\"puzzle-ui\"><div class=\"stage\" id=\"puzzle-stage\" data-on:pointerdown=\"$_isDragging = true; $_isClick = true; $_lastX = evt.clientX; $_lastY = evt.clientY; el.setPointerCapture(evt.pointerId)\" data-on:pointerup=\"$_isDragging = false; el.releasePointerCapture(evt.pointerId)\" data-on:pointercancel=\"$_isDragging = false\" data-on:pointermove=\"if ($_isDragging) { $_isClick = false; $_panX += (evt.clientX - $_lastX); $_panY += (evt.clientY - $_lastY); $_lastX = evt.clientX; $_lastY = evt.clientY; }\"><div class=\"grid-layer\" id=\"grid-layer\" data-style=\"{ '--zoom': Math.pow(10, $_zoomLog / 100), '--pan-x': $_panX, '--pan-y': $_panY }\"><div id=\"crossword-grid\" class=\"crossword-grid\" style=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -638,9 +638,9 @@ func PuzzlePage(user *db.User, p db.GetPuzzleRow, cells []app.AnnotatedCell, clu
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var31 string
-		templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("{mode: '%s', width: %d, height: %d, importedFiles: [], _sidebarOpen: true, _settingsOpen: false, _zoomLog: 0, _panX: 0, _panY: 0, _isDragging: false, _isClick: true, symmetryMode: 'rotational', direction: 'across', cellValue: '', clueText: '', _isSaving: false, serverVersion: %d, clientID: crypto.randomUUID()}", mode, p.Width, p.Height, serverVersion))
+		templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("{mode: '%s', width: %d, height: %d, importedFiles: [], _sidebarOpen: true, _settingsOpen: false, _zoomLog: 0, _panX: 0, _panY: 0, _lastX: 0, _lastY: 0, _isDragging: false, _isClick: true, symmetryMode: 'rotational', direction: 'across', cellValue: '', clueText: '', _isSaving: false, serverVersion: %d, clientID: crypto.randomUUID()}", mode, p.Width, p.Height, serverVersion))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/grid.templ`, Line: 178, Col: 383}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/grid.templ`, Line: 178, Col: 405}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 		if templ_7745c5c3_Err != nil {

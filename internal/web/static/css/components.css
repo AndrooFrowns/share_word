@@ -228,6 +228,7 @@ header {
     overflow: hidden; /* No scrollbars, we pan */
     position: relative;
     cursor: grab;
+    touch-action: none;
 }
 
 .stage:active {
