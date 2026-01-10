@@ -1,6 +1,6 @@
 module share_word
 
-go 1.25.5
+go 1.24.0
 
 require (
 	github.com/CAFxX/httpcompression v0.0.9
