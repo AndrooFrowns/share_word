@@ -6,6 +6,7 @@ import (
 	"share_word/internal/db"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	_ "modernc.org/sqlite"
 )
 
@@ -207,4 +208,52 @@ func getNumberMap(cells []AnnotatedCell) map[string]int {
 		m[fmt.Sprintf("%d,%d", c.X, c.Y)] = c.Number
 	}
 	return m
+}
+
+func TestSymmetryLogic(t *testing.T) {
+	tests := []struct {
+		name   string
+		x, y   int64
+		w, h   int64
+		mode   string
+		expect []Point
+	}{
+		{
+			name: "rotational 180",
+			x: 0, y: 0, w: 5, h: 5,
+			mode:   "rotational",
+			expect: []Point{{0, 0}, {4, 4}},
+		},
+		{
+			name: "rotational center point",
+			x: 2, y: 2, w: 5, h: 5,
+			mode:   "rotational",
+			expect: []Point{{2, 2}},
+		},
+		{
+			name: "horizontal mirror",
+			x: 0, y: 1, w: 5, h: 5,
+			mode:   "horizontal",
+			expect: []Point{{0, 1}, {4, 1}},
+		},
+		{
+			name: "vertical mirror",
+			x: 1, y: 0, w: 5, h: 5,
+			mode:   "vertical",
+			expect: []Point{{1, 0}, {1, 4}},
+		},
+		{
+			name: "both (rectangular)",
+			x: 0, y: 0, w: 5, h: 5,
+			mode:   "both",
+			expect: []Point{{0, 0}, {4, 0}, {0, 4}, {4, 4}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := GetSymmetricCells(tt.x, tt.y, tt.w, tt.h, tt.mode)
+			assert.ElementsMatch(t, tt.expect, got)
+		})
+	}
 }

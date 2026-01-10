@@ -63,9 +63,13 @@ func TestClueLogic(t *testing.T) {
 	clues, err = svc.GetFullClues(ctx, p, cells)
 	require.NoError(t, err)
 
+	foundOrphan := false
 	for _, c := range clues {
 		if c.Number == 1 && c.Direction == DirectionAcross {
-			t.Errorf("1-Across should have been filtered out (too short)")
+			foundOrphan = true
+			assert.Equal(t, "A first hint", c.Text)
+			assert.Equal(t, "", c.Answer, "Answer should be empty for orphan clue")
 		}
 	}
+	assert.True(t, foundOrphan, "1-Across should be preserved as an orphan since it has text")
 }
