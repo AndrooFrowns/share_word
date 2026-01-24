@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"golang.org/x/text/encoding/charmap"
@@ -196,8 +197,10 @@ func ParseIpuz(data []byte) (*ParsedPuzzle, error) {
 
 	var cells []ParsedCell
 	gridSource := f.Solution
+	isSolution := true
 	if len(gridSource) == 0 {
 		gridSource = f.Puzzle
+		isSolution = false
 	}
 
 	for y := 0; y < height; y++ {
@@ -224,7 +227,11 @@ func ParseIpuz(data []byte) (*ParsedPuzzle, error) {
 					}
 				}
 			case nil:
-				isBlock = false
+				if isSolution {
+					isBlock = true
+				} else {
+					isBlock = false
+				}
 			}
 
 			if char == "#" {
@@ -243,27 +250,39 @@ func ParseIpuz(data []byte) (*ParsedPuzzle, error) {
 
 	var parsedClues []ParsedClue
 
+	getInt := func(v interface{}) int {
+		switch val := v.(type) {
+		case float64:
+			return int(val)
+		case string:
+			i, _ := strconv.Atoi(val)
+			return i
+		default:
+			return 0
+		}
+	}
+
 	processClues := func(dirStr string, dir Direction) {
 		if list, ok := f.Clues[dirStr]; ok {
 			if arr, ok := list.([]interface{}); ok {
 				for _, item := range arr {
 					// Handle [number, text] or { "number": 1, "clue": "text" }
 					if clueArr, ok := item.([]interface{}); ok && len(clueArr) >= 2 {
-						numFloat, _ := clueArr[0].(float64)
+						num := getInt(clueArr[0])
 						text, _ := clueArr[1].(string)
 						parsedClues = append(parsedClues, ParsedClue{
-							Number:    int(numFloat),
+							Number:    num,
 							Direction: dir,
 							Text:      text,
 						})
 					} else if clueMap, ok := item.(map[string]interface{}); ok {
-						numFloat, _ := clueMap["number"].(float64)
+						num := getInt(clueMap["number"])
 						text, _ := clueMap["clue"].(string)
 						if text == "" {
 							text, _ = clueMap["text"].(string)
 						}
 						parsedClues = append(parsedClues, ParsedClue{
-							Number:    int(numFloat),
+							Number:    num,
 							Direction: dir,
 							Text:      text,
 						})
