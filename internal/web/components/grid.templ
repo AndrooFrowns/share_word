@@ -299,7 +299,7 @@ templ PuzzlePage(user *db.User, p db.GetPuzzleRow, cells []app.AnnotatedCell, cl
 	}
 	<div 
 		id="puzzle-page"
-		style="height: 100%; display: flex; flex-direction: column;"
+		style="flex: 1; display: flex; flex-direction: column; overflow: hidden;"
 		data-signals={ fmt.Sprintf("{mode: '%s', pID: '%s', width: %d, height: %d, importedFiles: [], _sidebarOpen: true, _settingsOpen: false, _zoomLog: 0, _panX: 0, _panY: 0, _lastX: 0, _lastY: 0, _isDragging: false, _isClick: true, symmetryMode: 'rotational', direction: '%s', lastKey: '', isShift: false, isCtrl: false, cellValue: '', clueText: '', _isSaving: false, serverVersion: %d, clientID: crypto.randomUUID()}", mode, p.ID, p.Width, p.Height, currentDir, serverVersion) }
 		data-init={ fmt.Sprintf("@get('%s?clientID=' + $clientID)", streamURL) }
 	>
