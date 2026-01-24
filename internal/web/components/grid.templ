@@ -41,6 +41,21 @@ templ PuzzleUI(p db.GetPuzzleRow, cells []app.AnnotatedCell, clues []app.Clue, m
 				$_lastX = evt.clientX;
 				$_lastY = evt.clientY;
 			}"
+			data-on:click="
+				if ($_isClick) {
+					const cell = evt.target.closest('.cell');
+					if (cell && cell.dataset.coord) {
+						const [x, y] = cell.dataset.coord.split(',');
+						if ($mode === 'solve') {
+							@post('/puzzles/' + $pID + '/cells/' + x + '/' + y + '/focus');
+							document.getElementById('puzzle-input')?.focus();
+						} else if ($mode === 'edit') {
+							const isBlock = cell.dataset.isBlock === 'true';
+							@post('/puzzles/' + $pID + '/cells/' + x + '/' + y + '/set-block/' + (!isBlock));
+						}
+					}
+				}
+			"
 		>
 			<div 
 				class="grid-layer"
@@ -169,9 +184,7 @@ templ CellSolve(cell app.AnnotatedCell, puzzleID string, focusedCell string, act
 	<div 
 		id={ fmt.Sprintf("cell-%d-%d", cell.X, cell.Y) }
 		class={ "cell", templ.KV("block", cell.IsBlock), templ.KV("cell-active", isFocused), templ.KV("word-active", isWordActive && !isFocused) }
-		if !cell.IsBlock {
-			data-on:click={ fmt.Sprintf("console.log('Cell click on %d,%d, isClick:', $_isClick); if($_isClick){ @post('/puzzles/%s/cells/%d/%d/focus'); document.getElementById('puzzle-input')?.focus() }", cell.X, cell.Y, puzzleID, cell.X, cell.Y) }
-		}
+		data-coord={ coord }
 	>
 		if !cell.IsBlock {
 			if cell.Number > 0 {
@@ -185,7 +198,8 @@ templ CellSolve(cell app.AnnotatedCell, puzzleID string, focusedCell string, act
 templ CellEdit(cell app.AnnotatedCell, puzzleID string) {
 	<div
 		class={ "cell", templ.KV("block", cell.IsBlock) }
-		data-on:click={ fmt.Sprintf("console.log('CellEdit click on %d,%d, isClick:', $_isClick); if($_isClick){ @post('/puzzles/%s/cells/%d/%d/set-block/%t') }", cell.X, cell.Y, puzzleID, cell.X, cell.Y, !cell.IsBlock) }
+		data-coord={ fmt.Sprintf("%d,%d", cell.X, cell.Y) }
+		data-is-block={ fmt.Sprint(cell.IsBlock) }
 	>
 		if !cell.IsBlock && cell.Number > 0 {
 			<span class="cell-num">{ fmt.Sprint(cell.Number) }</span>
