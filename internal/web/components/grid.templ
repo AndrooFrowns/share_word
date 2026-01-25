@@ -105,7 +105,7 @@ templ FocusBar(puzzleID string, activeClue, inactiveClue *app.Clue, focusedCell 
 				                						title="Click to see in sidebar"
 				                					>
 				                						<div class="clue-badge-col">
-				                							<div class="bg-primary text-white font-bold px-2 py-0.5 rounded text-[11px] whitespace-nowrap uppercase tracking-wider focus-bar-badge">
+				                							<div class="bg-primary text-white font-bold px-2 py-0.5 rounded whitespace-nowrap uppercase tracking-wider focus-bar-badge">
 				                								{ fmt.Sprint(activeClue.Number) }
 				                								if activeClue.Direction == app.DirectionAcross {
 				                									→
@@ -134,7 +134,7 @@ templ FocusBar(puzzleID string, activeClue, inactiveClue *app.Clue, focusedCell 
 															>
 																<div class="clue-badge-col">
 																	if inactiveClue != nil {
-																		<div class="text-[10px] font-bold text-slate-500 uppercase tracking-tight bg-slate-100 px-1.5 py-0.5 rounded">
+																		<div class="text-10 font-bold text-slate-500 uppercase tracking-tight bg-slate-100 px-1.5 py-0.5 rounded whitespace-nowrap">
 																			{ fmt.Sprint(inactiveClue.Number) }
 																			if inactiveClue.Direction == app.DirectionAcross {
 																				→
