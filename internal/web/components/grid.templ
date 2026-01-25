@@ -75,7 +75,6 @@ templ PuzzleUI(p db.GetPuzzleRow, cells []app.AnnotatedCell, clues []app.Clue, m
 		</div>
 		
 		@ClueSidebar(p.ID, clues, mode, editingClueID, activeClue)
-		@FocusBar(p.ID, activeClue, inactiveClue, focusedCell)
 	</div>
 }
 
@@ -423,8 +422,9 @@ templ PuzzlePage(user *db.User, p db.GetPuzzleRow, cells []app.AnnotatedCell, cl
 			</div>
 		</header>
 		
-		<main id="puzzle-ui-container" style="flex: 1; display: flex; flex-direction: column;">
+		<main id="puzzle-ui-container" style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
 			@PuzzleUI(p, cells, clues, mode, editingClueID, "", nil, nil, nil)
 		</main>
+		@FocusBar(p.ID, activeClue, inactiveClue, "")
 	</div>
 }
