@@ -348,13 +348,6 @@ templ PuzzlePage(user *db.User, p db.GetPuzzleRow, cells []app.AnnotatedCell, cl
 				</div>
 			}
 
-			<nav class="tab-bar">
-				<a href={ templ.SafeURL(fmt.Sprintf("/puzzles/%s/edit", p.ID)) } 
-				   class={ "tab-link", templ.KV("active", mode == "edit") }>Edit</a>
-				<a href={ templ.SafeURL(fmt.Sprintf("/puzzles/%s", p.ID)) } 
-				   class={ "tab-link", templ.KV("active", mode == "solve") }>Solve</a>
-			</nav>
-
 			<div class="peers" style="display: flex; align-items: center; gap: 12px;">
 				<div class="relative">
 					<button 
@@ -404,8 +397,22 @@ templ PuzzlePage(user *db.User, p db.GetPuzzleRow, cells []app.AnnotatedCell, cl
 						</div>
 					</div>
 				</div>
+			</div>
 
-				<div class="peers" id="avatar-container">
+			<nav class="tab-bar">
+				if mode == "edit" {
+					<span class="tab-link active">Edit</span>
+				} else {
+					<a href={ templ.SafeURL(fmt.Sprintf("/puzzles/%s/edit", p.ID)) } class="tab-link">Edit</a>
+				}
+				if mode == "solve" {
+					<span class="tab-link active">Solve</span>
+				} else {
+					<a href={ templ.SafeURL(fmt.Sprintf("/puzzles/%s", p.ID)) } class="tab-link">Solve</a>
+				}
+			</nav>
+
+			<div class="peers" id="avatar-container">
 					if user != nil {
 						<div class="avatar" style="background-color: var(--primary);" title={ user.Username }>
 							{ user.Username[:1] }
